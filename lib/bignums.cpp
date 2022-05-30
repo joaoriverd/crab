@@ -370,6 +370,11 @@ q_number::q_number(const z_number &z) {
   mpq_set_z(_n, z._n);
 }
 
+q_number::q_number(const fp_number &z) {
+  mpq_init(_n);
+  mpq_set_d(_n, z._n);
+}
+
 q_number::q_number(const z_number &num, const z_number &den) {
   mpz_init_set(mpq_numref(_n), num._n);
   mpz_init_set(mpq_denref(_n), den._n);

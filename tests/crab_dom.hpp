@@ -55,6 +55,7 @@ using z_oct_apron_domain_t = apron_domain<z_number, varname_t, APRON_OCT>;
 using z_pk_apron_domain_t = apron_domain<z_number, varname_t, APRON_PK>;
 using z_zones_elina_domain_t = elina_domain<z_number, varname_t, ELINA_ZONES>;
 using z_oct_elina_domain_t = elina_domain<z_number, varname_t, ELINA_OCT>;
+using fp_oct_elina_domain_t = elina_domain<fp_number, varname_t, ELINA_OCT>;
 using z_pk_elina_domain_t = elina_domain<z_number, varname_t, ELINA_PK>;
 using z_term_domain_t =
     term_domain<term::TDomInfo<z_number, varname_t, z_interval_domain_t>>;

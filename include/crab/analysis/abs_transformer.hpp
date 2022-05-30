@@ -919,7 +919,7 @@ public:
     auto ty = lhs.get_type();
     if (ty.is_bool()) {
       inv.assign_bool_var(lhs, rhs, false);
-    } else if (ty.is_integer() || ty.is_real()) {
+    } else if (ty.is_integer() || ty.is_real() || ty.is_fp()) {
       inv.assign(lhs, rhs);
     } else if (ty.is_reference()) {
       inv -= lhs;

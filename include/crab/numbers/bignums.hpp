@@ -53,7 +53,8 @@ public:
 
   // do not use it: to be removed
   mpz_ptr get_mpz_t() { return _n; }
-  
+  double get_double() { return 0.0; }
+
   std::size_t hash() const;
 
   bool fits_int64() const;
@@ -123,6 +124,125 @@ public:
 
 }; // class z_number
 
+class fp_number {
+  friend class q_number;
+
+private:
+  double _n;
+
+//  bool fits_sint() const;
+//  bool fits_slong() const;
+
+  // used only by q_number
+//  static z_number from_mpz_t(mpz_t n);
+//  static z_number from_mpz_srcptr(mpz_srcptr n);
+
+public:
+  fp_number() = default;
+  fp_number(double n) : _n(n) {}
+//  z_number(const std::string &s, unsigned base = 10);
+//  static z_number from_uint64(uint64_t n);
+  /* Return a z_number from num_words words of binary data. If order
+   is true then most significant word first, otherwise the least
+   significant first. The number is treated as unsigned so sign must
+   be treated separately. */
+//  static z_number from_raw_data(const uint64_t*data, size_t num_words,
+//				bool order = false);
+  /* Return an array of words from this. If the number is positive
+   then sign is true. If order is true then most significant word
+   first, otherwise the least significant first */
+//  uint64_t *to_raw_data(size_t &num_words, bool &sign, bool order = false);
+
+  ~fp_number() = default;
+
+  fp_number(const fp_number &o) = default;
+  fp_number(fp_number &&o) = default;
+  fp_number &operator=(const fp_number &o) = default;
+  fp_number &operator=(fp_number &&o) = default;
+
+  fp_number(const std::string &s, unsigned base = 10) {
+      _n = std::stod(s);
+  }
+
+  double get_double() const { return _n; };
+
+  // overloaded typecast operators
+//  explicit operator int64_t() const;
+
+//  std::string get_str(unsigned base = 10) const;
+
+  // do not use it: to be removed
+//  mpz_ptr get_mpz_t() { return _n; }
+
+//  std::size_t hash() const;
+
+//  bool fits_int64() const;
+
+  fp_number operator+(fp_number x) const { return this->_n + x._n; }
+
+  fp_number operator*(fp_number x) const { return this->_n * x._n; }
+
+  fp_number operator-(fp_number x) const { return this->_n - x._n; }
+
+  fp_number operator-() const { return -this->_n; }
+
+  fp_number operator/(fp_number x) const { return this->_n / x._n; }
+
+//  fp_number operator%(fp_number x) const { return this->_n % x._n; }
+
+  fp_number &operator+=(fp_number x) { return *this = *this + x; }
+
+  fp_number &operator*=(fp_number x) { return *this = *this * x; }
+
+  fp_number &operator-=(fp_number x) { return *this = *this - x; }
+
+  fp_number &operator/=(fp_number x) { return *this = *this / x; }
+
+//  fp_number &operator%=(fp_number x) { return *this = *this + x; }
+
+  fp_number &operator--() { return *this = *this - 1.0; }
+
+  fp_number &operator++() { return *this = *this + 1.0; }
+
+//  fp_number operator++(int);
+
+//  fp_number operator--(int);
+
+  bool operator==(fp_number x) const { return this->_n == x._n; }
+
+  bool operator!=(fp_number x) const { return this->_n != x._n; }
+
+  bool operator<(fp_number x) const { return this->_n < x._n; }
+
+  bool operator<=(fp_number x) const { return this->_n <= x._n; }
+
+  bool operator>(fp_number x) const { return this->_n > x._n; }
+
+  bool operator>=(fp_number x) const { return this->_n >= x._n; }
+
+  // bitwise-and
+//  fp_number operator&(fp_number x) const { return this->_n & x._n; }
+
+  // bitwise-or
+//  fp_number operator|(fp_number x) const { return this->_n | x._n; }
+
+  // bitwise-xor
+//  fp_number operator^(fp_number x) const;
+
+  // left shift
+//  fp_number operator<<(fp_number x) const;
+
+  // arithmetic right shift
+//  fp_number operator>>(fp_number x) const;
+
+//  fp_number fill_ones() const;
+
+  void write(crab::crab_os &o) const {
+    o << _n;
+  }
+
+}; // class fp_number
+
 class q_number {
 
 private:
@@ -134,6 +254,7 @@ public:
 
   q_number(const std::string &s, unsigned base = 10);
   q_number(const z_number &n);
+  q_number(const fp_number &n);
   q_number(const z_number &n, const z_number &d);
 
   static q_number from_mpq_t(mpq_t n);
@@ -208,6 +329,11 @@ public:
 }; // class q_number
 
 inline crab::crab_os &operator<<(crab::crab_os &o, const z_number &z) {
+  z.write(o);
+  return o;
+}
+
+inline crab::crab_os &operator<<(crab::crab_os &o, const fp_number &z) {
   z.write(o);
   return o;
 }

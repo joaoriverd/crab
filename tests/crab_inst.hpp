@@ -9,6 +9,11 @@
       crab::cfg_impl::z_cfg_t *, crab::cfg_impl::basic_block_label_t, DOM,     \
       bool, unsigned, unsigned, unsigned, bool, bool, bool);
 
+#define FP_RUNNER(DOM)                                                          \
+  template void fp_intra_run<DOM>(                                              \
+      crab::cfg_impl::fp_cfg_t *, crab::cfg_impl::basic_block_label_t, DOM,     \
+      bool, unsigned, unsigned, unsigned, bool, bool, bool);
+
 #define Q_RUNNER(DOM)                                                          \
   template void q_intra_run<DOM>(                                              \
       crab::cfg_impl::q_cfg_t *, crab::cfg_impl::basic_block_label_t, DOM,     \
@@ -51,6 +56,8 @@ Z_RUNNER(crab::domain_impl::z_rgn_int_t)
 Z_RUNNER(crab::domain_impl::z_rgn_sign_t)
 Z_RUNNER(crab::domain_impl::z_rgn_sign_constant_t)
 Z_RUNNER(crab::domain_impl::z_rgn_sdbm_t)
+
+FP_RUNNER(crab::domain_impl::fp_oct_elina_domain_t)
 
 Q_RUNNER(crab::domain_impl::q_interval_domain_t)
 Q_RUNNER(crab::domain_impl::q_oct_apron_domain_t)

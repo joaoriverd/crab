@@ -101,6 +101,8 @@ private:
       ghost_ty = variable_type(BOOL_TYPE);
     } else if (array_ty.is_real_array()) {
       ghost_ty = variable_type(REAL_TYPE);
+    } else if (array_ty.is_fp_array()) {
+      ghost_ty = variable_type(FP_TYPE, size * 8); // todo (JR): not sure of bitwidth
     }
 
     // The variable factory does caching so it returns always the same

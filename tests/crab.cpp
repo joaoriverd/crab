@@ -101,6 +101,20 @@ void z_intra_run(crab::cfg_impl::z_cfg_t *cfg,
 }
 
 template <typename Dom>
+void fp_intra_run(crab::cfg_impl::fp_cfg_t *cfg,
+                 crab::cfg_impl::basic_block_label_t entry, Dom init,
+                 bool run_liveness, unsigned widening, unsigned narrowing,
+                 unsigned jump_set_size, bool enable_stats,
+                 bool enable_checker, bool print_invariants) {
+  using namespace crab::analyzer;
+  using intra_fwd_analyzer_t =
+      intra_fwd_analyzer<crab::cfg_impl::fp_cfg_ref_t, Dom>;
+  intra_run_impl<crab::cfg_impl::fp_cfg_t, Dom, intra_fwd_analyzer_t>(
+      cfg, entry, init, run_liveness, widening, narrowing, jump_set_size,
+      enable_stats, enable_checker, print_invariants);
+}
+
+template <typename Dom>
 void q_intra_run(crab::cfg_impl::q_cfg_t *cfg,
                  crab::cfg_impl::basic_block_label_t entry, Dom init,
                  bool run_liveness, unsigned widening, unsigned narrowing,

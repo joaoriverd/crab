@@ -278,8 +278,13 @@ inline interval<Number> operator-(const interval<Number> &x, Number c) {
 namespace bounds_impl {
 void convert_bounds(bound<z_number> b1, bound<z_number> &b2);
 void convert_bounds(bound<q_number> b1, bound<q_number> &b2);
+void convert_bounds(bound<fp_number> b1, bound<fp_number> &b2);
 void convert_bounds(bound<z_number> b1, bound<q_number> &b2);
 void convert_bounds(bound<q_number> b1, bound<z_number> &b2);
+void convert_bounds(bound<fp_number> b1, bound<q_number> &b2);
+void convert_bounds(bound<fp_number> b1, bound<z_number> &b2);
+void convert_bounds(bound<z_number> b1, bound<fp_number> &b2);
+void convert_bounds(bound<q_number> b1, bound<fp_number> &b2);
 } // namespace bounds_impl
 
 namespace linear_interval_solver_impl {
@@ -290,13 +295,20 @@ template <>
 interval<q_number> trim_interval(const interval<q_number> &i,
                                  const interval<q_number> &j);
 template <>
+interval<fp_number> trim_interval(const interval<fp_number> &i,
+                                 const interval<fp_number> &j);
+template <>
 interval<z_number> lower_half_line(const interval<z_number> &i, bool is_signed);
 template <>
 interval<q_number> lower_half_line(const interval<q_number> &i, bool is_signed);
 template <>
+interval<fp_number> lower_half_line(const interval<fp_number> &i, bool is_signed);
+template <>
 interval<z_number> upper_half_line(const interval<z_number> &i, bool is_signed);
 template <>
 interval<q_number> upper_half_line(const interval<q_number> &i, bool is_signed);
+template <>
+interval<fp_number> upper_half_line(const interval<fp_number> &i, bool is_signed);
 } // namespace linear_interval_solver_impl
 
 } // namespace ikos

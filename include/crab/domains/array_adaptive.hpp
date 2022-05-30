@@ -599,6 +599,8 @@ template <typename Domain> class cell_ghost_man {
       return BOOL_TYPE;
     } else if (array_type.is_integer_array()) {
       return INT_TYPE;
+    } else if (array_type.is_fp_array()) {
+      return FP_TYPE;
     } else {
       assert(array_type.is_real_array());
       return REAL_TYPE;
@@ -628,7 +630,7 @@ template <typename Domain> class cell_ghost_man {
         vfac.get(vname), vtype_kind,
         (vtype_kind == BOOL_TYPE
              ? 1
-             : (vtype_kind == INT_TYPE ? 8 * c.get_size() : 0)));
+             : (vtype_kind == INT_TYPE || vtype_kind == FP_TYPE ? 8 * c.get_size() : 0))); //todo (JR): FP_TYPE correct?
     return scalar_var;
   }
 

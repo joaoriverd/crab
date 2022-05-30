@@ -12,22 +12,26 @@ enum variable_type_kind {
   // scalar types
   BOOL_TYPE,
   INT_TYPE,
+  FP_TYPE,
   REAL_TYPE,
   REF_TYPE,
   // array types
   ARR_BOOL_TYPE,
   ARR_INT_TYPE,
+  ARR_FP_TYPE,
   ARR_REAL_TYPE,
   // region types: a region can contain either a scalar or an array of
   // a non-reference type
   REG_UNKNOWN_TYPE, // any REG_X unifies with this
   REG_BOOL_TYPE,
   REG_INT_TYPE,
+  REG_FP_TYPE, // todo (JR): ??
   REG_REAL_TYPE,
   REG_REF_TYPE,
   //
   REG_ARR_BOOL_TYPE,
   REG_ARR_INT_TYPE,
+  REG_ARR_FP_TYPE, // todo (JR): ??
   REG_ARR_REAL_TYPE,
 
   // unknown type
@@ -63,6 +67,13 @@ public:
     if (m_kind == REG_INT_TYPE && m_bitwidth <= 0) {
       CRAB_ERROR("Cannot create integer region variable without bitwidth");
     }
+    if (m_kind == FP_TYPE && m_bitwidth <= 0) {
+      CRAB_WARN("Floating-point variable without bitwidth defined as double (i.e. 64 bits)");
+      m_bitwidth = 64;
+    }
+    if (m_kind == REG_FP_TYPE && m_bitwidth <= 0) {
+      CRAB_ERROR("Cannot create floating-point variable without bitwidth");
+    }
 
     if (m_kind == BOOL_TYPE) {
       m_bitwidth = 1;
@@ -74,6 +85,8 @@ public:
       return variable_type(variable_type_kind::REG_BOOL_TYPE);
     } else if (ty.is_integer()) {
       return variable_type(variable_type_kind::REG_INT_TYPE, ty.get_integer_bitwidth());
+    } else if (ty.is_fp()) {
+      return variable_type(variable_type_kind::REG_FP_TYPE, ty.get_fp_bitwidth());
     } else if (ty.is_real()) {
       return variable_type(variable_type_kind::REG_REAL_TYPE);
     } else if (ty.is_reference()) {
@@ -83,7 +96,9 @@ public:
     } else if (ty.is_real_array()) {
       return variable_type(variable_type_kind::REG_ARR_REAL_TYPE);            
     } else if (ty.is_integer_array()) {
-      return variable_type(variable_type_kind::REG_ARR_INT_TYPE);                  
+      return variable_type(variable_type_kind::REG_ARR_INT_TYPE);
+    } else if (ty.is_fp_array()) {
+      return variable_type(variable_type_kind::REG_ARR_FP_TYPE);
     } else if (!ty.is_typed()) {
       return variable_type(variable_type_kind::REG_UNKNOWN_TYPE);
     } else {
@@ -96,9 +111,9 @@ public:
   variable_type &operator=(const variable_type &o) = default;
   variable_type &operator=(variable_type &&o) = default;
   bool operator==(const variable_type &o) const {
-    if (m_kind == INT_TYPE) {
+    if (m_kind == INT_TYPE || m_kind == FP_TYPE) {
       return m_kind == o.m_kind && m_bitwidth == o.m_bitwidth;
-    } else if (m_kind == REG_INT_TYPE) {
+    } else if (m_kind == REG_INT_TYPE || m_kind == REG_FP_TYPE) {
       return m_kind == o.m_kind && m_bitwidth == o.m_bitwidth;
     } else {
       return m_kind == o.m_kind;
@@ -118,48 +133,63 @@ public:
   //// scalars
   bool is_bool() const { return m_kind == BOOL_TYPE; }
   bool is_integer() const { return m_kind == INT_TYPE; }
+  bool is_fp() const { return m_kind == FP_TYPE; }
   bool is_integer(unsigned bitwidth) const {
     return m_kind == INT_TYPE && m_bitwidth == bitwidth;
   }
+  bool is_fp(unsigned bitwidth) const {
+    return m_kind == FP_TYPE && m_bitwidth == bitwidth;
+  }
   unsigned get_integer_bitwidth() const {
-    assert(m_kind == INT_TYPE);
+    assert(m_kind == INT_TYPE || m_kind == FP_TYPE);
+    return m_bitwidth;
+  }
+  unsigned get_fp_bitwidth() const {
+    assert(m_kind == FP_TYPE);
     return m_bitwidth;
   }
   bool is_real() const { return m_kind == REAL_TYPE; }
   bool is_reference() const { return m_kind == REF_TYPE; }
   bool is_scalar() const {
-    return is_bool() || is_integer() || is_real() || is_reference();
+    return is_bool() || is_integer() ||is_fp() || is_real() || is_reference();
   }
   //// arrays
   bool is_bool_array() const { return m_kind == ARR_BOOL_TYPE; }
   bool is_integer_array() const { return m_kind == ARR_INT_TYPE; }
+  bool is_fp_array() const { return m_kind == ARR_FP_TYPE; }
   bool is_real_array() const { return m_kind == ARR_REAL_TYPE; }
   bool is_array() const {
-    return is_integer_array() || is_bool_array() || is_real_array();
+    return is_integer_array() || is_fp_array() || is_bool_array() || is_real_array();
   }
   //// regions
   bool is_unknown_region() const { return m_kind == REG_UNKNOWN_TYPE; }
   bool is_bool_region() const { return m_kind == REG_BOOL_TYPE; }
   bool is_integer_region() const { return m_kind == REG_INT_TYPE; }
+  bool is_fp_region() const { return m_kind == REG_FP_TYPE; }
   unsigned get_integer_region_bitwidth() const {
     assert(m_kind == REG_INT_TYPE);
+    return m_bitwidth;
+  }
+  unsigned get_fp_region_bitwidth() const {
+    assert(m_kind == REG_FP_TYPE);
     return m_bitwidth;
   }
   bool is_real_region() const { return m_kind == REG_REAL_TYPE; }
   bool is_reference_region() const { return m_kind == REG_REF_TYPE; }
   bool is_bool_array_region() const { return m_kind == REG_ARR_BOOL_TYPE; }
   bool is_int_array_region() const { return m_kind == REG_ARR_INT_TYPE; }
+  bool is_fp_array_region() const { return m_kind == REG_ARR_FP_TYPE; }
   bool is_real_array_region() const { return m_kind == REG_ARR_REAL_TYPE; }
   bool is_region() const {
     return is_unknown_region() || is_scalar_region() || is_array_region();
   }
   bool is_scalar_region() const {
-    return is_bool_region() || is_integer_region() || is_real_region() ||
+    return is_bool_region() || is_integer_region() || is_fp_region() || is_real_region() ||
            is_reference_region();
   }
   bool is_array_region() const {
     return is_bool_array_region() || is_int_array_region() ||
-           is_real_array_region();
+           is_fp_array_region() || is_real_array_region();
   }
 
   variable_type get_region_content_type() const {
@@ -168,12 +198,16 @@ public:
       return variable_type(variable_type_kind::BOOL_TYPE);
     } else if (is_integer_region()) {
       return variable_type(variable_type_kind::INT_TYPE, get_integer_region_bitwidth());
+    } else if (is_fp_region()) {
+      return variable_type(variable_type_kind::FP_TYPE, get_fp_region_bitwidth());
     } else if (is_real_region()) {
       return variable_type(variable_type_kind::REAL_TYPE);
     } else if (is_reference_region()) {
       return variable_type(variable_type_kind::REF_TYPE);
     } else if (is_int_array_region()) {
       return variable_type(variable_type_kind::ARR_INT_TYPE);
+    } else if (is_fp_array_region()) {
+      return variable_type(variable_type_kind::ARR_FP_TYPE);
     } else if (is_real_array_region()) {
       return variable_type(variable_type_kind::ARR_REAL_TYPE);      
     } else if (is_bool_array_region()) {
@@ -193,6 +227,9 @@ public:
     case INT_TYPE:
       o << "int" << m_bitwidth;
       break;
+    case FP_TYPE:
+      o << "fp" << m_bitwidth;
+      break;
     case REAL_TYPE:
       o << "real";
       break;
@@ -204,6 +241,9 @@ public:
       break;
     case ARR_INT_TYPE:
       o << "arr(int)";
+      break;
+    case ARR_FP_TYPE:
+      o << "arr(fp)";
       break;
     case ARR_REAL_TYPE:
       o << "arr(real)";
@@ -217,6 +257,9 @@ public:
     case REG_INT_TYPE:
       o << "region(int)";
       break;
+    case REG_FP_TYPE:
+      o << "region(fp)";
+      break;
     case REG_REAL_TYPE:
       o << "region(real)";
       break;
@@ -228,6 +271,9 @@ public:
       break;
     case REG_ARR_INT_TYPE:
       o << "region(arr(int))";
+      break;
+    case REG_ARR_FP_TYPE:
+      o << "region(arr(fp))";
       break;
     case REG_ARR_REAL_TYPE:
       o << "region(arr(real))";
@@ -353,7 +399,7 @@ private:
       // 0: null
       if (num == number_t(0))
         return;
-    } else if (ty.is_real() || ty.is_integer()) {
+    } else if (ty.is_real() || ty.is_integer() || ty.is_fp()) {
       return;
     }
 
@@ -432,7 +478,7 @@ public:
   }
 
   bool is_number() const {
-    return is_constant() && (get_type().is_real() || get_type().is_integer());
+    return is_constant() && (get_type().is_real() || get_type().is_integer() || get_type().is_fp());
   }
 
   void write(crab_os &o) const {

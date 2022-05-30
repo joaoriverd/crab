@@ -460,8 +460,7 @@ private:
       CRAB_ERROR("elina cannot allocate linear expression");
     }
 
-    ikos::q_number q(e.constant());
-    elina_scalar_set_mpq(linexpr->cst.val.scalar, q.get_mpq_t());
+    elina_scalar_set_double(linexpr->cst.val.scalar, e.constant().get_double());
 
     unsigned i = 0;
     for (auto it = e.begin(), et = e.end(); it != et; ++it, ++i) {
@@ -469,8 +468,7 @@ private:
       const variable_t &crab_var = it->second;
       elina_linterm_t *linterm = &linexpr->p.linterm[i];
       linterm->dim = get_var_dim_insert(crab_var);
-      ikos::q_number qcoef(crab_coeff);
-      elina_scalar_set_mpq(linterm->coeff.val.scalar, qcoef.get_mpq_t());
+      elina_scalar_set_double(linterm->coeff.val.scalar, crab_coeff.get_double());
     }
 
     return linexpr;
@@ -521,6 +519,10 @@ private:
     res = ikos::z_number((long)n);
   }
 
+  inline void convert_elina_number(double n, ikos::fp_number &res) const {
+    res = ikos::fp_number(n);
+  }
+
   inline void convert_elina_number(double n, ikos::q_number &res) const {
     res = ikos::q_number(n);
   }
@@ -529,6 +531,12 @@ private:
     ikos::q_number q = ikos::q_number::from_mpq_srcptr(mp);
     res = q.round_to_lower();
   }
+
+  inline void convert_elina_number(mpq_ptr mp, ikos::fp_number &res) const {
+    ikos::q_number q = ikos::q_number::from_mpq_srcptr(mp);
+    res = q.get_double(); // todo (JR): unsound operation
+  }
+
   inline void convert_elina_number(mpq_ptr mp, ikos::q_number &res) const {
     res = ikos::q_number::from_mpq_srcptr(mp);
   }
@@ -562,7 +570,7 @@ private:
     unsigned i;
     elina_dim_t dim;
     elina_coeff_t *coef;
-    linear_expression_t e(0);
+    linear_expression_t e((number_t) 0);
     elina_linexpr0_ForeachLinterm(linexp, i, dim, coef) {
       if (elina_coeff_zero(coef))
         continue;

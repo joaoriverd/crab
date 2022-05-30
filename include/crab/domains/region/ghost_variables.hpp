@@ -217,6 +217,9 @@ public:
       } else if (vty.is_integer_region()) {
         ty = INT_TYPE;
         bitwidth = vty.get_integer_region_bitwidth();
+      } else if (vty.is_fp_region()) {
+        ty = FP_TYPE;
+        bitwidth = vty.get_fp_region_bitwidth();
       } else if (vty.is_reference_region()) {
         ty = INT_TYPE;
         bitwidth = 32;
@@ -226,6 +229,8 @@ public:
         ty = ARR_BOOL_TYPE;
       } else if (vty.is_int_array_region()) {
         ty = ARR_INT_TYPE;
+      } else if (vty.is_fp_array_region()) {
+        ty = ARR_FP_TYPE;
       } else if (vty.is_real_array_region()) {
         ty = ARR_REAL_TYPE;
       } else {

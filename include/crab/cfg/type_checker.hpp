@@ -134,7 +134,7 @@ class type_checker_visitor
 
   // check variable is a number
   void check_num(const variable_t &v, std::string msg, statement_t &s) {
-    if (!v.get_type().is_integer() && !v.get_type().is_real()) {
+    if (!v.get_type().is_integer() && !v.get_type().is_real() && !v.get_type().is_fp()) {
       crab::crab_string_os os;
       os << "(type checking) " << msg << " in " << s;
       CRAB_ERROR(os.str());
@@ -153,6 +153,15 @@ class type_checker_visitor
   // check variable is an integer
   void check_int(const variable_t &v, std::string msg, statement_t &s) {
     if (!v.get_type().is_integer()) {
+      crab::crab_string_os os;
+      os << "(type checking) " << msg << " in " << s;
+      CRAB_ERROR(os.str());
+    }
+  }
+
+  // check variable is floating-point
+  void check_fp(const variable_t &v, std::string msg, statement_t &s) {
+    if (!v.get_type().is_fp()) {
       crab::crab_string_os os;
       os << "(type checking) " << msg << " in " << s;
       CRAB_ERROR(os.str());
@@ -280,6 +289,9 @@ class type_checker_visitor
         return;
     } else if (v1.get_type().is_real_array()) {
       if (v2.get_type().is_real())
+        return;
+    } else if (v1.get_type().is_fp_array()) {
+      if (v2.get_type().is_fp())
         return;
     } else {
       crab::crab_string_os os;

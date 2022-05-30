@@ -14,7 +14,7 @@ class elina_domain_params {
   friend class crab_domain_params;
 public:
   elina_domain_params()
-    : m_use_tree_expressions(true) {}
+    : m_use_tree_expressions(false) {}
   elina_domain_params(bool use_tree_expressions)
     : m_use_tree_expressions(use_tree_expressions) {}
 
