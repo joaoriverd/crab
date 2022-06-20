@@ -6,7 +6,7 @@ using namespace crab::cfg;
 using namespace crab::cfg_impl;
 using namespace crab::domain_impl;
 
-#define FP_PROGRAM
+#define Z_PROGRAM
 
 #if defined(FP_PROGRAM)
 #define t_cfg_t               fp_cfg_t
@@ -101,6 +101,65 @@ t_cfg_t *prog_2(variable_factory_t &vfac) {
   return cfg;
 }
 
+t_cfg_t *prog_simple(variable_factory_t &vfac) {
+
+  // Definining program variables
+  t_var x(vfac["x"], var_type, 32);
+  t_var y(vfac["y"], var_type, 32);
+  t_var z(vfac["z"], var_type, 32);
+  // entry and exit block
+  auto *cfg = new t_cfg_t("entry", "ret");
+  // adding blocks
+  auto &entry = cfg->insert("entry");
+  auto &bb1 = cfg->insert("bb1");
+  auto &ret = cfg->insert("ret");
+  // adding control flow
+  entry >> bb1;
+  bb1 >> ret;
+  // adding statements
+  entry.assign(x, t_number(1));
+  entry.assume(y <= t_number(1));
+  entry.assume(y >= t_number(0));
+  bb1.add(x, x, t_number(1));
+  bb1.add(x, x, y);
+
+  return cfg;
+}
+
+t_cfg_t *prog_if(variable_factory_t &vfac) {
+
+  // Definining program variables
+  t_var x(vfac["x"], var_type, 32);
+  t_var _2_x(vfac["_2_x"], var_type, 32);
+  t_var y(vfac["y"], var_type, 32);
+  // entry and exit block
+  auto *cfg = new t_cfg_t("entry", "ret");
+  // adding blocks
+  auto &entry = cfg->insert("entry");
+  auto &bb1 = cfg->insert("bb1");
+  auto &bb1_t = cfg->insert("bb1_t");
+  auto &bb1_f = cfg->insert("bb1_f");
+  auto &bb2 = cfg->insert("bb2");
+  auto &ret = cfg->insert("ret");
+  // adding control flow
+  entry >> bb1;
+  bb1 >> ret;
+  bb1 >> bb1_t;
+  bb1 >> bb1_f;
+  bb1_t >> bb2;
+  bb2 >> ret;
+  bb1_f >> ret;
+  // adding statements
+//  entry.assign(x, t_number(0));
+  entry.assume(x + y <= t_number(0));
+  bb1_t.assume(x + y <= 99);
+  bb2.add(x, x, t_number(1));
+  bb2.mul(_2_x, x, t_number(-2));
+  bb2.add(y, _2_x, t_number(200));
+
+  return cfg;
+}
+
 t_cfg_t *prog_jr(variable_factory_t &vfac) {
   /*
     int x = 0;
@@ -141,14 +200,24 @@ int main(int argc, char **argv) {
   }
 
   variable_factory_t vfac;
-  t_cfg_t *cfg = prog_2(vfac);
+  t_cfg_t *cfg = prog_simple(vfac);
   cfg->simplify(); // this is optional
   crab::outs() << *cfg << "\n";
 
   {
     t_oct_elina_domain_t init;
-    run(cfg, cfg->entry(), init, false, 2, 2, 20, stats_enabled);
+    run(cfg, cfg->entry(), init, false, 0, 0, 20, stats_enabled);
   }
+
+  {
+    z_tvpi_elina_domain_t init;
+    run(cfg, cfg->entry(), init, false, 0, 0, 20, stats_enabled);
+  }
+
+//  {
+//    fp_tvpi_elina_domain_t init;
+//    run(cfg, cfg->entry(), init, false, 2, 2, 20, stats_enabled);
+//  }
 
 //  {
 //    z_interval_domain_t init;

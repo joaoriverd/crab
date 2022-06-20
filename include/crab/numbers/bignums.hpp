@@ -53,7 +53,7 @@ public:
 
   // do not use it: to be removed
   mpz_ptr get_mpz_t() { return _n; }
-  double get_double() { return 0.0; }
+  double get_double() { return mpz_get_d(_n); }
 
   std::size_t hash() const;
 

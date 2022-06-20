@@ -7,10 +7,11 @@
 #include <crab/domains/intervals.hpp>
 #include <crab/support/debug.hpp>
 #include <crab/support/stats.hpp>
+#include <climits>
 
 namespace crab {
 namespace domains {
-using elina_domain_id_t = enum { ELINA_ZONES, ELINA_OCT, ELINA_PK };
+using elina_domain_id_t = enum { ELINA_ZONES, ELINA_OCT, ELINA_TVPI, ELINA_PK };
 
 template <typename Number> class ElinaDefaultParams {
 public:
@@ -114,6 +115,9 @@ private:
         break;
       case ELINA_OCT:
         s_apman = opt_oct_manager_alloc();
+        break;
+      case ELINA_TVPI:
+        s_apman = tvpi_manager_alloc();
         break;
       case ELINA_PK:
         s_apman = opt_pk_manager_alloc(false);
@@ -474,6 +478,31 @@ private:
     return linexpr;
   }
 
+  //// Using interval linear expressions and constraints
+  elina_linexpr0_t *crab_ival_linexpr_to_elina(const linear_expression_t &e) {
+    elina_linexpr0_t *linexpr =
+        elina_ival_linexpr0_alloc(ELINA_LINEXPR_SPARSE, e.size());
+    if (!linexpr) {
+      CRAB_ERROR("elina cannot allocate linear expression");
+    }
+
+    // todo: ensure round towards +inf?
+    double min_f = std::numeric_limits<double>::min();
+    double eps_f = std::numeric_limits<double>::epsilon();
+    elina_interval_set_double(linexpr->cst.val.interval, -(-e.constant().get_double() + min_f), e.constant().get_double() + min_f);
+
+    unsigned i = 0;
+    for (auto it = e.begin(), et = e.end(); it != et; ++it, ++i) {
+      number_t crab_coeff = it->first;
+      const variable_t &crab_var = it->second;
+      elina_linterm_t *linterm = &linexpr->p.linterm[i];
+      linterm->dim = get_var_dim_insert(crab_var);
+      elina_interval_set_double(linterm->coeff.val.interval, -(-crab_coeff.get_double() + eps_f), crab_coeff.get_double() + eps_f);
+    }
+
+    return linexpr;
+  }
+
   // for debugging
   void dump(elina_linexpr0_t *e, const var_map_t &m,
             elina_state_ptr apstate) const {
@@ -798,6 +827,7 @@ private:
     switch (op) {
     case OP_ADDITION:
       rhs = crab_linexpr_to_elina(y + z);
+//      rhs = crab_ival_linexpr_to_elina(y + z); // todo (jr): create respective ival_lin_expr
       break;
     case OP_SUBTRACTION:
       rhs = crab_linexpr_to_elina(y - z);
@@ -1154,6 +1184,7 @@ public:
             elinaPtr(get_man(),
                      elina_abstract0_opt_oct_narrowing(get_man(), &*x, &*y)),
             std::move(m));
+      case ELINA_TVPI: // todo (jr). Not sure about this. How to do narrowing in tvpi?
       case ELINA_ZONES:
       case ELINA_PK:
       default:
@@ -1991,6 +2022,8 @@ public:
       return "ElinaZones";
     case ELINA_OCT:
       return "ElinaOctagon";
+    case ELINA_TVPI:
+      return "ElinaTVPI";
     case ELINA_PK:
       return "ElinaPolyhedra";
     default:

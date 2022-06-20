@@ -22,13 +22,14 @@ if (NOT ELINA_FOUND)
   
   find_library(Elina_Poly_Lib NAMES optpoly PATHS ${ELINA_ROOT}/lib NO_DEFAULT_PATH)
   find_library(Elina_Opt_Oct_Lib NAMES optoct PATHS ${ELINA_ROOT}/lib NO_DEFAULT_PATH)
+  find_library(Elina_TVPI_Lib NAMES tvpi PATHS ${ELINA_ROOT}/lib NO_DEFAULT_PATH)
   find_library(Elina_Linearize_Lib NAMES elinalinearize PATHS ${ELINA_ROOT}/lib NO_DEFAULT_PATH)
   find_library(Elina_Aux_Lib NAMES elinaux PATHS ${ELINA_ROOT}/lib NO_DEFAULT_PATH)
   find_library(Elina_Opt_Zones_Lib NAMES optzones PATHS ${ELINA_ROOT}/lib NO_DEFAULT_PATH)
   find_library(Elina_Partitions_Lib NAMES partitions PATHS ${ELINA_ROOT}/lib NO_DEFAULT_PATH)
   
-  set(ELINA_LIBRARY ${Elina_Poly_Lib} 
-    ${Elina_Opt_Oct_Lib} ${Elina_Linearize_Lib} ${Elina_Aux_Lib}
+  set(ELINA_LIBRARY ${Elina_Poly_Lib}
+    ${Elina_Opt_Oct_Lib} ${Elina_TVPI_Lib} ${Elina_Linearize_Lib} ${Elina_Aux_Lib}
     ${Elina_Opt_Zones_Lib} ${Elina_Partitions_Lib})
   
   include (FindPackageHandleStandardArgs)

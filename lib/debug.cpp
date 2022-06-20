@@ -20,7 +20,7 @@ void CrabEnableLog(std::string x) {}
 #endif
 
 namespace crab {
-unsigned CrabVerbosity = 0;
+unsigned CrabVerbosity = 5; // todo: jr make zero by default
 void CrabEnableVerbosity(unsigned v) { CrabVerbosity = v; }
 
 bool CrabWarningFlag = true;

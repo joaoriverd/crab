@@ -16,6 +16,7 @@ ELINA_LIBS := \
     $(CRAB_INSTALL)/elina/lib/libelinalinearize.so \
     $(CRAB_INSTALL)/elina/lib/libelinaux.so \
     $(CRAB_INSTALL)/elina/lib/liboptoct.so \
+    $(CRAB_INSTALL)/elina/lib/libtvpi.so \
     $(CRAB_INSTALL)/elina/lib/liboptpoly.so \
     $(CRAB_INSTALL)/elina/lib/liboptzones.so \
     $(CRAB_INSTALL)/elina/lib/libpartitions.so \

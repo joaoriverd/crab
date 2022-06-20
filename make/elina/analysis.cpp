@@ -58,6 +58,8 @@ using basic_block_t = cfg_t::basic_block_t ;
 using interval_domain_t = interval_domain<z_number,varname_t>;
 using oct_domain_t = domains::elina_domain<z_number,varname_t,
 					  domains::elina_domain_id_t::ELINA_OCT>;
+using tvpi_domain_t = domains::elina_domain<z_number,varname_t,
+                                            domains::elina_domain_id_t::ELINA_TVPI>;
 using pk_domain_t = domains::elina_domain<z_number,varname_t,
 					  domains::elina_domain_id_t::ELINA_PK>;
 using abs_domain_t = domains::abstract_domain<var_t>;
@@ -121,6 +123,13 @@ int main(int argc, char**argv) {
   analyzer.get_abs_transformer().set_abs_value(top_oct);
   analyzer.run();
   outs () << "Invariants using Elina Octagons\n";
+  print_invariants(analyzer);
+  analyzer.clear();
+
+  tvpi_domain_t top_tvpi;
+  analyzer.get_abs_transformer().set_abs_value(top_tvpi);
+  analyzer.run();
+  outs () << "Invariants using Elina TVPI\n";
   print_invariants(analyzer);
   analyzer.clear();
   

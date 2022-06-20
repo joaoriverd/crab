@@ -11,6 +11,7 @@
 #include "elina_tcons0.h"
 #include "elina_texpr0.h"
 #include "opt_oct.h"
+#include "tvpi.h"
 #include "opt_pk.h"
 #include "opt_zones.h"
 
