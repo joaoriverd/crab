@@ -1,5 +1,6 @@
 #include "../common.hpp"
 #include "../program_options.hpp"
+#include <fenv.h>
 
 using namespace std;
 using namespace crab::cfg;
@@ -12,18 +13,21 @@ using namespace crab::domain_impl;
 #define t_cfg_t               fp_cfg_t
 #define t_var                 fp_var
 #define t_oct_elina_domain_t  fp_oct_elina_domain_t
+#define t_tvpi_elina_domain_t fp_tvpi_elina_domain_t
 #define var_type              crab::FP_TYPE
 #define t_number              ikos::fp_number
 #elif defined(REAL_PROGRAM)
 #define t_cfg_t               q_cfg_t
 #define t_var                 q_var
 #define t_oct_elina_domain_t  q_oct_elina_domain_t
+#define t_tvpi_elina_domain_t q_tvpi_elina_domain_t
 #define var_type              crab::REAL_TYPE
 #define t_number              ikos::q_number
 #else
 #define t_cfg_t               z_cfg_t
 #define t_var                 z_var
 #define t_oct_elina_domain_t  z_oct_elina_domain_t
+#define t_tvpi_elina_domain_t z_tvpi_elina_domain_t
 #define var_type              crab::INT_TYPE
 #define t_number              ikos::z_number
 #endif
@@ -82,8 +86,8 @@ t_cfg_t *prog(variable_factory_t &vfac) {
 t_cfg_t *prog_2(variable_factory_t &vfac) {
 
   // Definining program variables
-  t_var x(vfac["x"], var_type);
-  t_var y(vfac["y"], var_type);
+  t_var x(vfac["x"], var_type, 32);
+  t_var y(vfac["y"], var_type, 32);
   // entry and exit block
   auto *cfg = new t_cfg_t("entry", "bb1");
   // adding blocks
@@ -93,10 +97,10 @@ t_cfg_t *prog_2(variable_factory_t &vfac) {
   entry >> bb1;
   bb1 >> bb1;
   // adding statements
-  entry.assign(x, t_number(0.0));
-  entry.assign(y, t_number(0.5));
+  entry.assign(x, t_number(3));
+  entry.assign(y, t_number(5));
   bb1.add(x, x, y);
-  bb1.mul(y, y, t_number(0.5));
+  bb1.mul(y, y, t_number(2));
 
   return cfg;
 }
@@ -117,11 +121,11 @@ t_cfg_t *prog_simple(variable_factory_t &vfac) {
   entry >> bb1;
   bb1 >> ret;
   // adding statements
-  entry.assign(x, t_number(1));
-  entry.assume(y <= t_number(1));
-  entry.assume(y >= t_number(0));
-  bb1.add(x, x, t_number(1));
-  bb1.add(x, x, y);
+//  entry.assume(x + y <= t_number(2));
+//  entry.assume(x + y >= t_number(4));
+  entry.assume(x <= 100);
+  entry.assume(x >= 0);
+  bb1.div(y, x, t_number(2));
 
   return cfg;
 }
@@ -143,7 +147,6 @@ t_cfg_t *prog_if(variable_factory_t &vfac) {
   auto &ret = cfg->insert("ret");
   // adding control flow
   entry >> bb1;
-  bb1 >> ret;
   bb1 >> bb1_t;
   bb1 >> bb1_f;
   bb1_t >> bb2;
@@ -153,9 +156,49 @@ t_cfg_t *prog_if(variable_factory_t &vfac) {
 //  entry.assign(x, t_number(0));
   entry.assume(x + y <= t_number(0));
   bb1_t.assume(x + y <= 99);
+  bb1_f.assume(x + y >= 100);
   bb2.add(x, x, t_number(1));
   bb2.mul(_2_x, x, t_number(-2));
   bb2.add(y, _2_x, t_number(200));
+
+  return cfg;
+}
+
+t_cfg_t *prog_clam(variable_factory_t &vfac) {
+
+  // Defining program variables
+  t_var x(vfac["x"], var_type, 32);
+  t_var y(vfac["y"], var_type, 32);
+  t_var k(vfac["k"], var_type, 32);
+  t_var n(vfac["n"], var_type, 32);
+  t_var _2_x(vfac["_2_x"], var_type, 32);
+  t_var _add(vfac["_add"], var_type, 32);
+  // entry and exit block
+  auto *cfg = new t_cfg_t("entry", "ret");
+  // adding blocks
+  auto &entry = cfg->insert("entry");
+  auto &bb1 = cfg->insert("bb1");
+  auto &bb1_t = cfg->insert("bb1_t");
+  auto &bb1_f = cfg->insert("bb1_f");
+  auto &bb2 = cfg->insert("bb2");
+  auto &ret = cfg->insert("ret");
+  // adding control flow
+  entry >> bb1;
+  bb1 >> bb1_t;
+  bb1 >> bb1_f;
+  bb1_t >> bb2;
+  bb2 >> bb1;
+  bb1_f >> ret;
+  // adding statements
+  entry.assign(k, t_number(200));
+  entry.assign(n, t_number(100));
+  entry.assign(x, t_number(0));
+  entry.assign(y, k);
+  bb1_t.assume(x <= n-1);
+  bb2.add(x, x, t_number(1));
+  bb2.mul(y, x, t_number(-2));
+  bb2.add(y, k, y);
+  bb1_f.assume(x >= n);
 
   return cfg;
 }
@@ -184,16 +227,18 @@ t_cfg_t *prog_jr(variable_factory_t &vfac) {
   bb1_t >> bb1;
   bb1_f >> ret;
   // adding statements
-  entry.assign(x, t_number(0.9));
-  bb1_t.assume(x <= t_number(99.1));
-  bb1_t.add(x, x, t_number(0.1));
-  bb1_f.assume(x > t_number(99.1));
+  entry.assign(x, t_number(1));
+  bb1_t.assume(x <= t_number(99));
+  bb1_t.add(x, x, t_number(1));
+  bb1_f.assume(x > t_number(99));
 
   return cfg;
 }
 
 /* Example of how to infer invariants from the above CFG */
 int main(int argc, char **argv) {
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
   bool stats_enabled = false;
   if (!crab_tests::parse_user_options(argc, argv, stats_enabled)) {
     return 0;
@@ -204,14 +249,15 @@ int main(int argc, char **argv) {
   cfg->simplify(); // this is optional
   crab::outs() << *cfg << "\n";
 
-  {
-    t_oct_elina_domain_t init;
-    run(cfg, cfg->entry(), init, false, 0, 0, 20, stats_enabled);
-  }
+//  {
+//    t_oct_elina_domain_t init;
+//    run(cfg, cfg->entry(), init, false, 1, 2, 20, stats_enabled);
+//  }
 
   {
-    z_tvpi_elina_domain_t init;
-    run(cfg, cfg->entry(), init, false, 0, 0, 20, stats_enabled);
+    fesetround(FE_UPWARD);
+    t_tvpi_elina_domain_t init;
+    run(cfg, cfg->entry(), init, false, 0, 2, 20, stats_enabled);
   }
 
 //  {

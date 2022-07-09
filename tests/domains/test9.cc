@@ -1,5 +1,6 @@
 #include "../common.hpp"
 #include "../program_options.hpp"
+#include <cfenv>
 
 using namespace std;
 using namespace crab::cfg;
@@ -72,9 +73,27 @@ int main(int argc, char **argv) {
   variable_factory_t vfac;
 
   z_cfg_t *p1 = cfg1(vfac);
+  p1->simplify(); // this is optional
   crab::outs() << *p1 << "\n";
-  z_sdbm_domain_t init;
-  run_and_check(p1, p1->entry(), init, false, 2, 2, 20, stats_enabled);
+
+  {
+    z_oct_elina_domain_t init;
+    run(p1, p1->entry(), init, false, 1, 2, 20, stats_enabled);
+  }
+
+  {
+    fesetround(FE_UPWARD);
+    z_tvpi_elina_domain_t init;
+    run(p1, p1->entry(), init, false, 1, 2, 20, stats_enabled);
+  }
+
+//  {
+//    z_pk_elina_domain_t init;
+//    run(p1, p1->entry(), init, false, 1, 2, 20, stats_enabled);
+//  }
+
+//  z_sdbm_domain_t init;
+//  run_and_check(p1, p1->entry(), init, false, 2, 2, 20, stats_enabled);
   delete p1;
 
   return 0;

@@ -1,5 +1,6 @@
 #include "../common.hpp"
 #include "../program_options.hpp"
+#include <cfenv>
 
 using namespace std;
 using namespace crab::cfg;
@@ -79,21 +80,32 @@ int main(int argc, char **argv) {
   crab::outs() << "\n";
 
   {
-    z_dbm_domain_t init;
-    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
+    z_oct_elina_domain_t init;
+    run(cfg, cfg->entry(), init, false, 1, 2, 20, stats_enabled);
   }
+
   {
-    z_sdbm_domain_t init;
-    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
+    fesetround(FE_UPWARD);
+    z_tvpi_elina_domain_t init;
+    run(cfg, cfg->entry(), init, false, 1, 2, 20, stats_enabled);
   }
-  {
-    z_term_dis_int_t init;
-    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
-  }
-  {
-    z_num_domain_t init;
-    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
-  }
+
+//  {
+//    z_dbm_domain_t init;
+//    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
+//  }
+//  {
+//    z_sdbm_domain_t init;
+//    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
+//  }
+//  {
+//    z_term_dis_int_t init;
+//    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
+//  }
+//  {
+//    z_num_domain_t init;
+//    run(cfg, cfg->entry(), init, true, 1, 2, 20, stats_enabled);
+//  }
   delete cfg;
   return 0;
 }

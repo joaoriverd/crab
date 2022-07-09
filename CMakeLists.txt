@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.3)
 
 project(crab)
 
+set(CMAKE_VERBOSE_MAKEFILE ON) # JR
+
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR ) 
   message (FATAL_ERROR 
     "In-source builds are not allowed. Please clean your source tree and try again.")  
@@ -16,7 +18,7 @@ endif()
 
 # Default is release with debug info
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING
     "Choose the type of build, options are: Debug Release RelWithDebInfo Coverage." FORCE)
 endif()
 
@@ -27,7 +29,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}  "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #--------------- Crab Options ---------------------#
 option(CRAB_USE_LDD   "Enable Ldd library" OFF)
 option(CRAB_USE_APRON "Enable Apron library" OFF)
-option(CRAB_USE_ELINA "Enable Elina library" OFF)
+option(CRAB_USE_ELINA "Enable Elina library" ON)
 option(CRAB_BUILD_LIBS_SHARED "Build all Crab libraries dynamically." OFF)
 option(CRAB_ENABLE_STATS "Enable stats" ON)
 if (CRAB_USE_APRON AND CRAB_USE_ELINA)
@@ -35,7 +37,7 @@ if (CRAB_USE_APRON AND CRAB_USE_ELINA)
 endif()
 
 ## Only for developers use
-option(CRAB_ENABLE_TESTS "Enable tests" OFF)
+option(CRAB_ENABLE_TESTS "Enable tests" ON)
 option(CRAB_ENABLE_ASAN "Enable Address Sanitizer" OFF)
 option(CRAB_USE_GENERIC_WRAPPER
   "If tests enabled then use the generic abstract domain" OFF)
@@ -149,7 +151,7 @@ endif ()
 if (CMAKE_BUILD_TYPE STREQUAL Coverage)
   include(Coverage)
   # We don't want coverage on external things
-  set(EXT_CMAKE_BUILD_TYPE Release)
+  set(EXT_CMAKE_BUILD_TYPE Debug)
 else()
   set(EXT_CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 endif ()
