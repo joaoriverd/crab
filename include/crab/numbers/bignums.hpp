@@ -230,7 +230,10 @@ public:
 //  fp_number operator^(fp_number x) const;
 
   // left shift
-//  fp_number operator<<(fp_number x) const;
+  fp_number operator<<(fp_number x) const {
+    assert(false); // Left-shift not supported for fp_number
+    return x;
+  }
 
   // arithmetic right shift
 //  fp_number operator>>(fp_number x) const;
