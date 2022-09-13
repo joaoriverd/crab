@@ -117,7 +117,8 @@ private:
         s_apman = opt_oct_manager_alloc();
         break;
       case ELINA_TVPI:
-        s_apman = tvpi_manager_alloc();
+//        s_apman = tvpi_oct_pk_manager_alloc();
+        s_apman = tvpi_manager_alloc(); //JR
         break;
       case ELINA_PK:
         s_apman = opt_pk_manager_alloc(false);
@@ -759,7 +760,7 @@ private:
     elina_texpr0_free(res);
   }
 
-  // Using elina linear expresions
+  // Using elina linear expressions
   void apply_linexpr(arith_operation_t op, const variable_t &x,
                      const variable_t &y, number_t z) {
     elina_linexpr0_t *rhs = nullptr;
@@ -820,7 +821,7 @@ private:
     elina_texpr0_free(res);
   }
 
-  // Using elina linear expresions
+  // Using elina linear expressions
   void apply_linexpr(arith_operation_t op, const variable_t &x,
                      const variable_t &y, const variable_t &z) {
     elina_linexpr0_t *rhs = nullptr;
