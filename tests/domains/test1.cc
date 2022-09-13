@@ -125,7 +125,11 @@ t_cfg_t *prog_simple(variable_factory_t &vfac) {
 //  entry.assume(x + y >= t_number(4));
   entry.assume(x <= 100);
   entry.assume(x >= 0);
-  bb1.div(y, x, t_number(2));
+  bb1.mul(y, x, t_number(2));
+  std::vector<t_var> y_v, x_v;
+  x_v.push_back(x);
+  y_v.push_back(y);
+  bb1.callsite("sqrt", x_v, x_v);
 
   return cfg;
 }
@@ -200,6 +204,27 @@ t_cfg_t *prog_clam(variable_factory_t &vfac) {
   bb2.add(y, k, y);
   bb1_f.assume(x >= n);
 
+  /* Middle version */
+//  entry.assign(k, t_number(100));
+//  entry.assign(n, t_number(100));
+//  entry.assign(x, t_number(0));
+//  entry.assign(y, k);
+//  bb1_t.assume(x <= n-1);
+//  bb2.add(x, x, t_number(1));
+//  bb2.sub(y, k, x);
+//  bb1_f.assume(x >= n);
+
+  /* Simple version */
+//  entry.assign(k, t_number(200));
+//  entry.assign(n, t_number(100));
+//  entry.assign(x, t_number(0));
+//  entry.assign(y, k);
+//  bb1_t.assume(x <= t_number(99));
+//  bb2.add(x, x, t_number(1));
+//  bb2.mul(y, x, t_number(-2));
+//  bb2.add(y, y, k);
+//  bb1_f.assume(x >= n);
+
   return cfg;
 }
 
@@ -235,6 +260,37 @@ t_cfg_t *prog_jr(variable_factory_t &vfac) {
   return cfg;
 }
 
+t_cfg_t *prog_fig_26(variable_factory_t &vfac) {
+
+  // Defining program variables
+  t_var i(vfac["i"], var_type, 32);
+  t_var j(vfac["j"], var_type, 32);
+  t_var k(vfac["k"], var_type, 32);
+  t_var n(vfac["n"], var_type, 32);
+  t_var _2_x(vfac["_2_x"], var_type, 32);
+  t_var _add(vfac["_add"], var_type, 32);
+  // entry and exit block
+  auto *cfg = new t_cfg_t("entry", "ret");
+  // adding blocks
+  auto &entry = cfg->insert("entry");
+  auto &bb1 = cfg->insert("bb1");
+  auto &bb1_t = cfg->insert("bb1_t");
+  auto &bb1_f = cfg->insert("bb1_f");
+  auto &bb2 = cfg->insert("bb2");
+  auto &ret = cfg->insert("ret");
+  // adding control flow
+  entry >> bb1;
+  bb1 >> ret;
+
+//  entry.div(j, k, t_number(4));
+  entry.assume(j <= t_number(4));
+  entry.assume(j >= t_number(0));
+  entry.assign(i, t_number(0));
+  entry.mul(i, j, j);
+
+  return cfg;
+}
+
 /* Example of how to infer invariants from the above CFG */
 int main(int argc, char **argv) {
   feenableexcept(FE_INVALID | FE_OVERFLOW);
@@ -257,8 +313,13 @@ int main(int argc, char **argv) {
   {
     fesetround(FE_UPWARD);
     t_tvpi_elina_domain_t init;
-    run(cfg, cfg->entry(), init, false, 0, 2, 20, stats_enabled);
+    run(cfg, cfg->entry(), init, false, 2, 2, 20, stats_enabled);
   }
+
+//  {
+//    z_pk_elina_domain_t init;
+//    run(cfg, cfg->entry(), init, false, 1, 2, 20, stats_enabled);
+//  }
 
 //  {
 //    fp_tvpi_elina_domain_t init;
