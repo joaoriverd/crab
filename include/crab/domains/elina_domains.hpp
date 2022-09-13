@@ -1059,7 +1059,25 @@ public:
           std::move(m));
     }
   }
+  
+  void operator&=(const elina_domain_t &o) override {
+    crab::CrabStats::count(domain_name() + ".count.meet");
+    crab::ScopedCrabStats __st__(domain_name() + ".meet");
 
+    if (is_bottom() || o.is_top()) {
+      // do nothing
+    } else if (is_top() || o.is_bottom()) {
+      *this = o;
+    } else {
+      elina_state_ptr x =
+          elinaPtr(get_man(), elina_abstract0_copy(get_man(), &*o.m_apstate));
+      m_var_map =
+	std::move(merge_var_map(m_var_map, m_apstate, o.m_var_map, x));
+      m_apstate = elinaPtr(
+	get_man(), elina_abstract0_meet(get_man(), false, &*m_apstate, &*x));
+    }
+  }
+  
   elina_domain_t operator&(const elina_domain_t &o) const override {
     crab::CrabStats::count(domain_name() + ".count.meet");
     crab::ScopedCrabStats __st__(domain_name() + ".meet");
@@ -1097,8 +1115,14 @@ public:
         elinaPtr(get_man(), elina_abstract0_copy(get_man(), &*o.m_apstate));
 
     var_map_t m = merge_var_map(m_var_map, x, o.m_var_map, y);
+
+    // widening precondition: the old value is included in the new value.
+    // widen(old, new) = widen(old,(join(old,new)))    
+    elina_state_ptr x_join_y = elinaPtr(get_man(),
+					elina_abstract0_join(get_man(), false, &*x, &*y));
+    
     return elina_domain_t(
-        elinaPtr(get_man(), elina_abstract0_widening(get_man(), &*x, &*y)),
+        elinaPtr(get_man(), elina_abstract0_widening(get_man(), &*x, &*x_join_y)),
         std::move(m), false /* do not compact */);
     //}
   }
@@ -1154,9 +1178,14 @@ public:
       elina_intv_widen += intv_widen.to_linear_constraint_system();
       return res & elina_intv_widen;
 #else
+    // widening precondition: the old value is included in the new value.
+    // widen(old, new) = widen(old,(join(old,new)))    
+    elina_state_ptr x_join_y = elinaPtr(get_man(),
+					elina_abstract0_join(get_man(), false, &*x, &*y));
+      
     elina_lincons0_array_t csts = make_thresholds(o, ts);
     elina_domain_t res(elinaPtr(get_man(), elina_abstract0_widening_threshold(
-                                               get_man(), &*x, &*y, &csts)),
+                                               get_man(), &*x, &*x_join_y, &csts)),
                        std::move(m), false /* do not compact */);
     elina_lincons0_array_clear(&csts);
     return res;
@@ -1426,6 +1455,7 @@ public:
                                    << *this << "\n";);
   }
 
+  
   void operator+=(const linear_constraint_system_t &_csts) override {
     crab::CrabStats::count(domain_name() + ".count.add_constraints");
     crab::ScopedCrabStats __st__(domain_name() + ".add_constraints");
@@ -1456,8 +1486,9 @@ public:
         csts +=
             ikos::linear_constraint_impl::strict_to_non_strict_inequality(c);
       } else if (c.is_disequation()) {
-        // We try to convert a disequation into conjunctive
-        // inequalities
+	// We try to convert a disequation into a strict inequality
+	constraint_simp_domain_traits<elina_domain_t>::lower_disequality(*this, c, csts);
+        // We try to convert a disequation into conjunctive inequalities
         inequalities_from_disequation(c.expression(), csts);
       } else {
         csts += c;

@@ -1,3 +1,47 @@
+#pragma once
+
+/** Several implementations of set-based domains:
+ * 
+ * - discrete_domain uses patricia trees to implement sets. As a
+ *   constraint, it requires the set element to be indexable. Given a
+ *   set of elements E, the discrete domain is a finite lattice that
+ *   consists of all subsets of E. For instance if E={x,y,z}:
+ * 
+ *              {x,y,z}    least precise element
+ *              /  |   \
+ *          {x,y} {x,z} {y,z} 
+ *           \   /    /  /
+ *            \ / \  / \/
+ *            {x} {y} {z}
+ *              \  | / 
+ *                { }      most precise element
+ *
+ * - set_domain has the same functionality than discrete_domain but it
+ *   uses std::set. It should be used only when the set element cannot
+ *   be indexable because set_domain is slower than discrete_domain.
+ * 
+ * - dual_set_domain: it takes a set-based domain (discrete_domain or
+ *   set_domain) and invert it. That is, 
+ *
+ *                { }      least precise element
+ *               / |  \
+ *            {x} {y} {z}
+ *            / \ / \ /	\
+ *          {x,y} {x,z} {y,z}
+ *             \   |   /
+ *              {x,y,z}    most precise element
+ *
+ * - discrete_pair_domain is a set of pairs (key,value) where key must
+ *   be indexable.
+ **/
+#include <crab/domains/patricia_trees.hpp>
+#include <crab/support/debug.hpp>
+
+#include "boost/range/iterator_range_core.hpp"
+#include "boost/optional.hpp"
+
+namespace ikos {
+
 /*******************************************************************************
  *
  * An implementation of discrete domains based on Patricia trees.
@@ -37,26 +81,17 @@
  * UNILATERAL TERMINATION OF THIS AGREEMENT.
  *
  ******************************************************************************/
-
-#pragma once
-
-#include <crab/domains/patricia_trees.hpp>
-#include <crab/support/debug.hpp>
-
-#include "boost/range/iterator_range_core.hpp"
-#include "boost/optional.hpp"
-
-namespace ikos {
-
+  
 template <typename Element> class discrete_domain {
 
 private:
   using ptset_t = patricia_tree_set<Element>;
+  using discrete_domain_t = discrete_domain<Element>;
 
 public:
-  using discrete_domain_t = discrete_domain<Element>;
+  using element_t = Element;
   using iterator = typename ptset_t::iterator;
-
+  
 private:
   bool m_is_top;
   ptset_t m_set;
@@ -277,24 +312,24 @@ namespace domains {
  * This domain is semantically equivalent to discrete_domain but it
  * uses std::set instead of patricia tries as underlying
  * datastructure. Because of this, this domain is slower than
- * discrete_domain so the only reason to use it is when Element is not
- * a subclass of indexable.
+ * discrete_domain so the only reason to use it is when Element cannot
+ * be a subclass of indexable.
 **/
 
 template <class Element, class Compare>
 class set_domain {
 private:
   using set_t = std::set<Element, Compare>;
+  using set_domain_t = set_domain<Element, Compare>;
 
 public:
-  using set_domain_t = set_domain<Element, Compare>;
+  using element_t = Element;  
   using iterator = typename set_t::const_iterator;
 
 private:
   bool m_is_top;
   set_t m_set;
 
-private:
   set_domain(bool is_top) : m_is_top(is_top) {}
   set_domain(set_t set) : m_is_top(false), m_set(set) {}
 
@@ -488,25 +523,30 @@ inline crab::crab_os &operator<<(crab::crab_os &o,
   return o;
 }
 
-// Dual of set_domain: the larger is the set, the more precise is the
-// domain.
-template<class Element, class Compare>
+// Dual of set_domain/discrete_domain: the larger is the set, the more
+// precise is the domain.
+template<class Set>
 class dual_set_domain {
-  using dual_set_domain_t = dual_set_domain<Element, Compare>;
-  using set_domain_t = set_domain<Element, Compare>;
-  
-  
-  set_domain_t m_set;
-    
+  using dual_set_domain_t = dual_set_domain<Set>;
+       
 public:
+  using set_domain_t = Set;   
+  using element_t = typename set_domain_t::element_t;
   using iterator = typename set_domain_t::iterator;
 
-  dual_set_domain(set_domain_t s)
-    : m_set(s) {}
+private:
+    set_domain_t m_set;
+public:
+  
   dual_set_domain()
     : m_set(set_domain_t::bottom()) /*top by default*/ {}
-  dual_set_domain(const dual_set_domain_t &other)
-    : m_set(other.m_set) {}
+  dual_set_domain(set_domain_t s)
+    : m_set(s) {}
+
+  dual_set_domain(const dual_set_domain_t &other) = default;
+  dual_set_domain(dual_set_domain_t &&other) = default;  
+  dual_set_domain_t&operator=(const dual_set_domain_t &other) = default;
+  dual_set_domain_t&operator=(dual_set_domain_t &&other) = default;  
 
   static dual_set_domain_t bottom() { return set_domain_t::top(); }
   static dual_set_domain_t top() { return set_domain_t::bottom(); }
@@ -545,21 +585,26 @@ public:
     return this->operator&(other);
   }
 
-  dual_set_domain_t &operator+=(const Element &c) {
+  dual_set_domain_t &operator+=(const element_t &c) {
     m_set += c;
     return *this;
   }
-  dual_set_domain_t &operator-=(const Element &c) {
+  dual_set_domain_t &operator-=(const element_t &c) {
     m_set -= c;
     return *this;
   }
 
+  bool at(const element_t &e) const{
+    dual_set_domain_t s(e);
+    return (s <= *this);
+  }
+  
   std::size_t size() { return m_set.size(); }
 
   iterator begin() const  { return m_set.begin(); }
   iterator end() const { return m_set.end(); }
   
-  void write(crab::crab_os &o) {
+  void write(crab::crab_os &o) const {
     if (is_bottom()) {
       o << "_|_";
     } else if (is_top()) {
@@ -570,7 +615,7 @@ public:
   }
 
   friend crab::crab_os &operator<<(crab::crab_os &o,
-				   dual_set_domain_t &dom) {
+				   const dual_set_domain_t &dom) {
     dom.write(o);
     return o;
   }
@@ -617,8 +662,8 @@ private:
   discrete_pair_domain(bool b) : m_is_top(b) {}
 
   class join_op : public binary_op_t {
-    std::pair<bool, boost::optional<Value>>
-    apply(const Key &/*key*/, const Value &x, const Value &y) {
+    virtual std::pair<bool, boost::optional<Value>>
+    apply(const Key &/*key*/, const Value &x, const Value &y) override {
       Value z = x.operator|(y);
       if (z.is_top()) {
         return {false, boost::optional<Value>()};
@@ -626,12 +671,12 @@ private:
         return {false, boost::optional<Value>(z)};
       }
     }
-    bool default_is_absorbing() { return false; }
+    virtual bool default_is_absorbing() override { return false; }
   }; // class join_op
 
   class meet_op : public binary_op_t {
-    std::pair<bool, boost::optional<Value>>
-    apply(const Key &/*key*/, const Value &x, const Value &y) {
+    virtual std::pair<bool, boost::optional<Value>>
+    apply(const Key &/*key*/, const Value &x, const Value &y) override {
       Value z = x.operator&(y);
       if (z.is_bottom()) {
         return {true, boost::optional<Value>()};
@@ -639,12 +684,12 @@ private:
         return {false, boost::optional<Value>(z)};
       }
     };
-    bool default_is_absorbing() { return true; }
+    virtual bool default_is_absorbing() override { return true; }
   }; // class meet_op
 
   class domain_po : public partial_order_t {
-    bool leq(const Value &x, const Value &y) { return x.operator<=(y); }
-    bool default_is_top() { return false; }
+    virtual bool leq(const Value &x, const Value &y) override { return x.operator<=(y); }
+    virtual bool default_is_top() override { return false; }
   }; // class domain_po
 
 public:

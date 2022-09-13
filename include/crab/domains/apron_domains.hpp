@@ -757,6 +757,24 @@ public:
     }
   }
 
+  void operator&=(const apron_domain_t &o) override {
+    crab::CrabStats::count(domain_name() + ".count.meet");
+    crab::ScopedCrabStats __st__(domain_name() + ".meet");
+
+    if (is_bottom() || o.is_top()) {
+      // do nothing
+    } else if (is_top() || o.is_bottom()) {
+      *this = o;
+    } else {
+      ap_state_ptr x =
+          apPtr(get_man(), ap_abstract0_copy(get_man(), &*o.m_apstate));
+      m_var_map =
+	std::move(merge_var_map(m_var_map, m_apstate, o.m_var_map, x));
+      m_apstate = apPtr(
+	get_man(), ap_abstract0_meet(get_man(), false, &*m_apstate, &*x));
+    }
+  }
+  
   apron_domain_t operator&(const apron_domain_t &o) const override {
     crab::CrabStats::count(domain_name() + ".count.meet");
     crab::ScopedCrabStats __st__(domain_name() + ".meet");
@@ -787,14 +805,23 @@ public:
     // else if (o.is_bottom())
     //   return *this;
     // else {
+
+    
     ap_state_ptr x =
         apPtr(get_man(), ap_abstract0_copy(get_man(), &*m_apstate));
+
     ap_state_ptr y =
         apPtr(get_man(), ap_abstract0_copy(get_man(), &*o.m_apstate));
 
     var_map_t m = merge_var_map(m_var_map, x, o.m_var_map, y);
+
+    // widening precondition: the old value is included in the new value.
+    // widen(old, new) = widen(old,(join(old,new)))    
+    ap_state_ptr x_join_y = apPtr(get_man(),
+				  ap_abstract0_join(get_man(), false, &*x, &*y));
+    
     return apron_domain_t(
-        apPtr(get_man(), ap_abstract0_widening(get_man(), &*x, &*y)),
+        apPtr(get_man(), ap_abstract0_widening(get_man(), &*x, &*x_join_y)),
         std::move(m), false /* do not compact */);
     //}
   }
@@ -848,9 +875,14 @@ public:
 	  apron_intv_widen += intv_widen.to_linear_constraint_system();
 	  return res & apron_intv_widen;
 #else
+    // widening precondition: the old value is included in the new value.
+    // widen(old, new) = widen(old,(join(old,new)))    
+    ap_state_ptr x_join_y = apPtr(get_man(),
+				  ap_abstract0_join(get_man(), false, &*x, &*y));
+	  
     ap_lincons0_array_t csts = make_thresholds(o, ts);
     apron_domain_t res(apPtr(get_man(), ap_abstract0_widening_threshold(
-                                            get_man(), &*x, &*y, &csts)),
+                                            get_man(), &*x, &*x_join_y, &csts)),
                        std::move(m), false /* do not compact */);
     ap_lincons0_array_clear(&csts);
     return res;
@@ -1110,6 +1142,8 @@ public:
         csts +=
             ikos::linear_constraint_impl::strict_to_non_strict_inequality(c);
       } else if (c.is_disequation()) {
+	// We try to convert a disequation into a strict inequality
+	constraint_simp_domain_traits<apron_domain_t>::lower_disequality(*this, c, csts);
         // We try to convert a disequation into conjunctive
         // inequalities
         inequalities_from_disequation(c.expression(), csts);

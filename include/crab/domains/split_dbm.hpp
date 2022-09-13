@@ -1194,9 +1194,19 @@ protected:
       set_to_top();
     }
 
-    CRAB_LOG("zones-split-size", auto p = size();
-             crab::outs() << "#nodes = " << p.first << " #edges=" << p.second
-                          << "\n";);
+    CRAB_LOG("zones-split-size",
+	     auto p = size();
+	     print_dbm_size(p.first, p.second));
+  }
+
+  void print_dbm_size(unsigned nodes, unsigned edges) {
+    if (nodes > 1) {
+      crab::outs() << "#nodes=" << nodes << " "
+		   << "#edges=" << edges << " "
+		   << "#max-edges=" << nodes*nodes << " "
+		   << "(" << ((float)edges / (float)(nodes*nodes))*100 << ")"
+		   << "\n";
+    }
   }
 
 public:
@@ -1213,6 +1223,10 @@ public:
     crab::CrabStats::count(domain_name() + ".count.copy");
     crab::ScopedCrabStats __st__(domain_name() + ".copy");
 
+    CRAB_LOG("zones-split-size",
+	     auto p = size();
+	     print_dbm_size(p.first, p.second));
+    
     if (o._is_bottom)
       set_to_bottom();
 
@@ -1245,6 +1259,11 @@ public:
         assert(g.size() > 0);
       }
     }
+
+    CRAB_LOG("zones-split-size",
+	     auto p = size();
+	     print_dbm_size(p.first, p.second));
+    
     return *this;
   }
 
@@ -1445,10 +1464,10 @@ public:
         }
       }
 
-      std::swap(vert_map, out_vmap);
-      std::swap(rev_map, out_revmap);
-      std::swap(g, join_g);
-      std::swap(potential, pot_rx);
+      vert_map = std::move(out_vmap);
+      rev_map = std::move(out_revmap);
+      g = std::move(join_g);
+      potential = std::move(pot_rx);
       unstable.clear();
       _is_bottom = false;
     }
@@ -1625,6 +1644,135 @@ public:
     return (*this || o);
   }
 
+  void operator&=(const DBM_t &o) override {
+    crab::CrabStats::count(domain_name() + ".count.meet");
+    crab::ScopedCrabStats __st__(domain_name() + ".meet");
+
+    if (is_bottom() || o.is_top()) {
+      // do nothing
+    } else if (is_top() || o.is_bottom()) {
+      *this = o;
+    } else {
+      CRAB_LOG("zones-split", crab::outs() << "Before meet:\n"
+                                           << "DBM 1\n"
+                                           << *this << "\n"
+                                           << "DBM 2\n"
+                                           << o << "\n");
+
+      DBM_t &left = *this;
+      DBM_t right(o);
+
+      left.normalize();
+      right.normalize();
+
+      check_potential(left.g, left.potential, __LINE__);
+      check_potential(right.g, right.potential, __LINE__);
+
+      // We map vertices in the left operand onto a contiguous range.
+      // This will often be the identity map, but there might be gaps.
+      vert_map_t meet_verts;
+      rev_map_t meet_rev;
+
+      std::vector<vert_id> perm_x;
+      std::vector<vert_id> perm_y;
+      std::vector<Wt> meet_pi;
+      perm_x.push_back(0);
+      perm_y.push_back(0);
+      meet_pi.push_back(Wt(0));
+      meet_rev.push_back(boost::none);
+      for (auto p : left.vert_map) {
+        vert_id vv = perm_x.size();
+        meet_verts.insert(vmap_elt_t(p.first, vv));
+        meet_rev.push_back(p.first);
+
+        perm_x.push_back(p.second);
+        perm_y.push_back(-1);
+        meet_pi.push_back(left.potential[p.second] - left.potential[0]);
+      }
+
+      // Add missing mappings from the right operand.
+      for (auto p : right.vert_map) {
+        auto it = meet_verts.find(p.first);
+
+        if (it == meet_verts.end()) {
+          vert_id vv = perm_y.size();
+          meet_rev.push_back(p.first);
+
+          perm_y.push_back(p.second);
+          perm_x.push_back(-1);
+          meet_pi.push_back(right.potential[p.second] - right.potential[0]);
+          meet_verts.insert(vmap_elt_t(p.first, vv));
+        } else {
+          perm_y[(*it).second] = p.second;
+        }
+      }
+
+      // Build the permuted view of x and y.
+      assert(left.g.size() > 0);
+      GrPerm gx(perm_x, left.g);
+      assert(right.g.size() > 0);
+      GrPerm gy(perm_y, right.g);
+
+      // Compute the syntactic meet of the permuted graphs.
+      bool is_closed;
+      graph_t meet_g(GrOps::meet(gx, gy, is_closed));
+
+      // Compute updated potentials on the zero-enriched graph
+      // vector<Wt> meet_pi(meet_g.size());
+      // We've warm-started pi with the operand potentials
+      if (!GrOps::select_potentials(meet_g, meet_pi)) {
+        // Potentials cannot be selected -- state is infeasible.
+        set_to_bottom();
+        return;
+      }
+
+      if (!is_closed) {
+        edge_vector delta;
+        SubGraph<graph_t> meet_g_excl(meet_g, 0);
+        // GrOps::close_after_meet(meet_g_excl, meet_pi, gx, gy, delta);
+
+        if (crab_domain_params_man::get().zones_chrome_dijkstra())
+          GrOps::close_after_meet(meet_g_excl, meet_pi, gx, gy, delta);
+        else
+          GrOps::close_johnson(meet_g_excl, meet_pi, delta);
+
+        GrOps::apply_delta(meet_g, delta);
+
+        // Recover updated LBs and UBs.
+        if (crab_domain_params_man::get().zones_close_bounds_inline()) {
+          Wt_min min_op;
+          for (auto e : delta) {
+            if (meet_g.elem(0, e.first.first))
+              meet_g.update_edge(0,
+                                 meet_g.edge_val(0, e.first.first) + e.second,
+                                 e.first.second, min_op);
+            if (meet_g.elem(e.first.second, 0))
+              meet_g.update_edge(e.first.first,
+                                 meet_g.edge_val(e.first.second, 0) + e.second,
+                                 0, min_op);
+          }
+        } else {
+          delta.clear();
+          GrOps::close_after_assign(meet_g, meet_pi, 0, delta);
+          GrOps::apply_delta(meet_g, delta);
+        }
+      }
+      
+      check_potential(meet_g, meet_pi, __LINE__);
+
+      
+      vert_map = std::move(meet_verts);
+      rev_map = std::move(meet_rev);
+      g = std::move(meet_g);
+      potential = std::move(meet_pi);
+      unstable.clear();
+      _is_bottom = false;
+
+      CRAB_LOG("zones-split", crab::outs() << "Result meet:\n" << *this << "\n");
+    }
+  }
+
+  
   DBM_t operator&(const DBM_t &o) const override {
     crab::CrabStats::count(domain_name() + ".count.meet");
     crab::ScopedCrabStats __st__(domain_name() + ".meet");
@@ -2097,73 +2245,70 @@ public:
     crab::CrabStats::count(domain_name() + ".count.add_constraints");
     crab::ScopedCrabStats __st__(domain_name() + ".add_constraints");
 
+    if (cst.is_tautology()) {
+      return;
+    }
+
+    if (cst.is_contradiction()) {
+      set_to_bottom();
+      return;
+    }
+    
     // XXX: we do nothing with unsigned linear inequalities
     if (cst.is_inequality() && cst.is_unsigned()) {
       CRAB_WARN("unsigned inequality ", cst, " skipped by split_dbm domain");
       return;
     }
 
-    if (is_bottom())
-      return;
-    normalize();
-
-    if (cst.is_tautology())
-      return;
-
-    // g.check_adjs();
-
-    if (cst.is_contradiction()) {
-      set_to_bottom();
+    if (is_bottom()) {
       return;
     }
-
+    
+    normalize();
+    // g.check_adjs();
     if (cst.is_inequality()) {
       if (!add_linear_leq(cst.expression())) {
         set_to_bottom();
       }
-      //  g.check_adjs();
-      CRAB_LOG("zones-split", crab::outs() << "--- " << cst << "\n"
-                                           << *this << "\n");
-      return;
-    }
-
-    if (cst.is_strict_inequality()) {
+    } else if (cst.is_strict_inequality()) {
       // We try to convert a strict to non-strict.
-      auto nc =
-          ikos::linear_constraint_impl::strict_to_non_strict_inequality(cst);
+      auto nc = ikos::linear_constraint_impl::strict_to_non_strict_inequality(cst);
       if (nc.is_inequality()) {
         // here we succeed
         if (!add_linear_leq(nc.expression())) {
           set_to_bottom();
         }
-        CRAB_LOG("zones-split", crab::outs() << "--- " << cst << "\n"
-                                             << *this << "\n");
-        return;
       }
-    }
-
-    if (cst.is_equality()) {
+    } else if (cst.is_equality()) {
       const linear_expression_t &exp = cst.expression();
       if (!add_linear_leq(exp) || !add_linear_leq(-exp)) {
-        CRAB_LOG("zones-split", crab::outs() << " ~~> _|_"
-                                             << "\n");
         set_to_bottom();
       }
       // g.check_adjs();
-      CRAB_LOG("zones-split", crab::outs() << "--- " << cst << "\n"
-                                           << *this << "\n");
-      return;
+    } else if (cst.is_disequation()) {
+      // We handle here the case x !=y by converting the disequation
+      // into a strict inequality if possible.
+      linear_constraint_system_t csts;
+      constraint_simp_domain_traits<DBM_t>::lower_disequality(*this, cst, csts);
+      for (auto const& c: csts) {
+	// We try to convert a strict inequality into non-strict one
+	auto nc = ikos::linear_constraint_impl::strict_to_non_strict_inequality(c);
+	if (nc.is_inequality()) {
+	  // here we succeed
+	  if (!add_linear_leq(nc.expression())) {
+	    set_to_bottom();
+	  }
+	}
+      }
+      
+      if (!is_bottom()) {
+	// We handle here the case x != c
+	add_disequation(cst.expression());
+      }
     }
 
-    if (cst.is_disequation()) {
-      add_disequation(cst.expression());
-      return;
-    }
-
-    CRAB_WARN("Unhandled constraint ", cst, " by split_dbm");
     CRAB_LOG("zones-split", crab::outs() << "---" << cst << "\n"
-                                         << *this << "\n");
-    return;
+	     << *this << "\n");
   }
 
   void operator+=(const linear_constraint_system_t &csts) override {
@@ -2642,7 +2787,6 @@ public:
     dom.extract(x, csts, only_equalities);
   }
 };
-
 } // namespace domains
 } // namespace crab
 

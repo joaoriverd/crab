@@ -2684,6 +2684,113 @@ public:
     }
   }
 
+  void operator&=(const split_oct_domain_t &o) override {
+    crab::CrabStats::count(domain_name() + ".count.meet");
+    crab::ScopedCrabStats __st__(domain_name() + ".meet");
+
+    if (is_bottom() || o.is_top()) {
+      // do nothing
+    } else if (is_top() || o.is_bottom()) {
+      *this = o;
+    } else {
+
+      CRAB_LOG("octagon", crab::outs() << "Before meet:\n"
+                                       << "DBM 1\n"
+                                       << *this << "\n"
+                                       << "DBM 2\n"
+                                       << o << "\n");
+
+      split_oct_domain_t &left = *this;
+      split_oct_domain_t right(o);
+
+      left.normalize();
+      right.normalize();
+
+      vert_map_t meet_verts;
+      rev_map_t meet_rev;
+      std::vector<vert_id> perm_x;
+      std::vector<vert_id> perm_y;
+      std::vector<Wt> meet_pi;
+
+      for (auto p : left.m_vert_map) {
+        vert_id vv = perm_x.size();
+        meet_verts.insert(vmap_elt_t(p.first, {vv, vv + 1}));
+        meet_rev.push_back(p.first);
+        meet_rev.push_back(p.first);
+
+        perm_x.push_back(p.second.first);
+        perm_x.push_back(p.second.second);
+        perm_y.push_back(-1);
+        perm_y.push_back(-1);
+        meet_pi.push_back(left.m_potential[p.second.first]);
+        meet_pi.push_back(left.m_potential[p.second.second]);
+      }
+
+      // Add missing mappings from the right operand.
+      for (auto p : right.m_vert_map) {
+        auto it = meet_verts.find(p.first);
+
+        if (it == meet_verts.end()) {
+          vert_id vv = perm_y.size();
+          meet_rev.push_back(p.first);
+          meet_rev.push_back(p.first);
+
+          perm_y.push_back(p.second.first);
+          perm_y.push_back(p.second.second);
+          perm_x.push_back(-1);
+          perm_x.push_back(-1);
+          meet_pi.push_back(right.m_potential[p.second.first]);
+          meet_pi.push_back(right.m_potential[p.second.second]);
+          meet_verts.insert(vmap_elt_t(p.first, {vv, vv + 1}));
+        } else {
+          perm_y[(*it).second.first] = p.second.first;
+          perm_y[(*it).second.second] = p.second.second;
+        }
+      }
+
+      // Build the permuted view of x and y.
+      assert(left.m_graph.size() > 0);
+      GrPerm gx(perm_x, left.m_graph);
+      assert(right.m_graph.size() > 0);
+      GrPerm gy(perm_y, right.m_graph);
+
+      // Compute the syntactic meet of the permuted graphs.
+      bool is_closed;
+      graph_t meet_g(GrOps::meet(gx, gy, is_closed));
+
+      // Compute updated potentials on the zero-enriched graph
+      // vector<Wt> meet_pi(meet_g.size());
+      // We've warm-started pi with the operand potentials
+      if (!GrOps::select_potentials(meet_g, meet_pi)) {
+        // Potentials cannot be selected -- state is infeasible.
+	set_to_bottom();
+        return;
+      }
+
+      if (!is_closed) {
+        edge_vector delta;
+        split_octagons_impl::SplitOctGraph<graph_t> meet_g_oct(meet_g);
+        if (crab_domain_params_man::get().oct_chrome_dijkstra()) {
+          GrOps::close_after_meet(meet_g_oct, meet_pi, gx, gy, delta);
+        } else {
+          GrOps::close_johnson(meet_g_oct, meet_pi, delta);
+        }
+        update_delta(meet_g, delta);
+      }
+
+      check_potential(meet_g, meet_pi, __LINE__);
+
+      m_vert_map = std::move(meet_verts);
+      m_rev_vert_map = std::move(meet_rev);
+      m_graph = std::move(meet_g);
+      m_potential = std::move(meet_pi);
+      m_unstable.clear();
+      m_is_bottom = false;
+      
+      CRAB_LOG("octagon", crab::outs() << "Result meet:\n" << *this << "\n");
+    }
+  }
+  
   split_oct_domain_t widening_thresholds(
       const split_oct_domain_t &o,
       const thresholds<number_t> &ts) const override {
@@ -2739,62 +2846,62 @@ public:
   void operator+=(const linear_constraint_t &cst) {
     crab::CrabStats::count(domain_name() + ".count.add_constraints");
     crab::ScopedCrabStats __st__(domain_name() + ".add_constraints");
-    if (is_bottom())
+
+    if (cst.is_tautology()) {
       return;
-    normalize();
-    if (cst.is_tautology())
-      return;
+    }
+    
     if (cst.is_contradiction()) {
       set_to_bottom();
       return;
     }
-
-    if (cst.is_inequality()) {
-      if (!add_linear_leq(cst.expression()))
-        set_to_bottom();
-      CRAB_LOG("octagon", crab::outs() << "--- " << cst << "\n"
-                                       << *this << "\n");
+    
+    if (is_bottom()) {
       return;
     }
-
-    if (cst.is_strict_inequality()) {
+    
+    normalize();
+    if (cst.is_inequality()) {
+      if (!add_linear_leq(cst.expression())) {
+        set_to_bottom();
+      }
+    } else if (cst.is_strict_inequality()) {
       // We try to convert a strict to non-strict.
-      auto nc =
-          ikos::linear_constraint_impl::strict_to_non_strict_inequality(cst);
+      auto nc = ikos::linear_constraint_impl::strict_to_non_strict_inequality(cst);
       if (nc.is_inequality()) {
         // here we succeed
         if (!add_linear_leq(nc.expression())) {
           set_to_bottom();
         }
-        CRAB_LOG("octagon", crab::outs() << "--- " << cst << "\n"
-                                         << *this << "\n");
-        return;
       }
-    }
-
-    if (cst.is_equality()) {
+    } else if (cst.is_equality()) {
       const linear_expression_t &exp = cst.expression();
       if (!add_linear_leq(exp) || !add_linear_leq(-exp)) {
-        CRAB_LOG("octagon", crab::outs() << " ~~> _|_"
-                                         << "\n");
         set_to_bottom();
       }
-      CRAB_LOG("octagon", crab::outs() << "--- " << cst << "\n"
-                                       << *this << "\n");
-      return;
-    }
+    } else if (cst.is_disequation()) {
+      // We handle here the case x !=y by converting the disequation
+      // into a strict inequality if possible.
+      linear_constraint_system_t csts;
+      constraint_simp_domain_traits<split_oct_domain_t>::lower_disequality(*this, cst, csts);
+      for (auto const& c: csts) {
+	// We try to convert a strict inequality into non-strict one
+	auto nc = ikos::linear_constraint_impl::strict_to_non_strict_inequality(c);
+	if (nc.is_inequality()) {
+	  // here we succeed
+	  if (!add_linear_leq(nc.expression())) {
+	    set_to_bottom();
+	  }
+	}
+      }
 
-    if (cst.is_disequation()) {
-      add_disequation(cst.expression());
-      CRAB_LOG("octagon", crab::outs() << "--- " << cst << "\n"
-                                       << *this << "\n");
-      return;
+      if (!is_bottom()) {
+	// We handle here the case x != c      
+	add_disequation(cst.expression());
+      }
     }
-
-    CRAB_WARN("Unhandled constraint in SplitOct");
 
     CRAB_LOG("octagon", crab::outs() << "---" << cst << "\n" << *this << "\n");
-    return;
   }
 
   void operator+=(const linear_constraint_system_t &csts) override {
