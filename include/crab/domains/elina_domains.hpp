@@ -24,6 +24,12 @@ public:
   // use reals
   enum { use_integers = 0 };
 };
+
+template <> class ElinaDefaultParams<ikos::fp_number> {
+public:
+  // use reals
+  enum { use_integers = 0 };
+};
 } // namespace domains
 } // namespace crab
 
@@ -103,7 +109,9 @@ private:
   elina_state_ptr m_apstate;
   var_map_t m_var_map;
 
-  bool is_real() const { return std::is_same<Number, ikos::q_number>::value; }
+  bool is_real() const {
+    return std::is_same<Number, ikos::q_number>::value || std::is_same<Number, ikos::fp_number>::value;
+  }
 
   bool is_integer() const { return !is_real(); }
 
@@ -2016,7 +2024,23 @@ public:
   void intrinsic(std::string name,
 		 const variable_or_constant_vector_t &inputs,
                  const variable_vector_t &outputs) override {
+
+    int function = 0;
+    if (name == "sqrt") { function = 1; }
+    if (name == "sqr" ) { function = 2; }
+    if (name == "sin" ) { function = 3; }
+
+    if (function) {
+      variable_t x = inputs[0].get_variable();
+      variable_t y = outputs[0];
+      auto dim_rhs = get_var_dim_insert(x);
+      auto dim_lhs = get_var_dim_insert(y);
+      m_apstate = elinaPtr(get_man(), elina_abstract0_math_func(get_man(), &*m_apstate, dim_lhs, dim_rhs, function));
+      return;
+    }
+
     CRAB_WARN("Intrinsics ", name, " not implemented by ", domain_name());
+
   }
 
   void backward_intrinsic(std::string name,
