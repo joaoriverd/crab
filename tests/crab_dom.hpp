@@ -135,7 +135,7 @@ using q_tvpi_elina_domain_t = elina_domain<q_number, varname_t, ELINA_TVPI>;
 /// Numerical domains over floating-points
 /*===================================================================*/
 using fp_oct_elina_domain_t = elina_domain<fp_number, varname_t, ELINA_OCT>;
-using fp_tvpi_elina_domain_t = elina_domain<fp_number, varname_t, ELINA_TVPI>;
+using fp_tvpi_elina_domain_t = elina_domain<fp_number, varname_t, ELINA_TVPI, ElinaDefaultParams<ikos::fp_number>>;
 
 /*===================================================================*/
 // Wrapper for an arbitrary abstract domain
