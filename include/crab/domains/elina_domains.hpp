@@ -16,7 +16,9 @@ using elina_domain_id_t = enum { ELINA_ZONES, ELINA_OCT, ELINA_TVPI, ELINA_PK };
 template <typename Number> class ElinaDefaultParams {
 public:
   // use integers with truncation rounding
-  enum { use_integers = 1 };
+  // todo (JR): Do not use truncation for now,
+  //  since we are using this data type also for floating-point
+  enum { use_integers = 0 };
 };
 
 template <> class ElinaDefaultParams<ikos::q_number> {
@@ -110,7 +112,11 @@ private:
   var_map_t m_var_map;
 
   bool is_real() const {
-    return std::is_same<Number, ikos::q_number>::value || std::is_same<Number, ikos::fp_number>::value;
+    return std::is_same<Number, ikos::q_number>::value  ||
+           std::is_same<Number, ikos::fp_number>::value ||
+           std::is_same<Number, ikos::z_number>::value;
+           // todo: (JR) since clam/crab does not support combining real and integer variables,
+           //  we add z_number as real variable for now. But this should be changed.
   }
 
   bool is_integer() const { return !is_real(); }
@@ -429,8 +435,8 @@ private:
                                 ELINA_RDIR_ZERO);
     }
   }
-  static elina_texpr0_t *texpr_div(elina_texpr0_t *a, elina_texpr0_t *b) {
-    if (Params::use_integers) {
+  static elina_texpr0_t *texpr_div(elina_texpr0_t *a, elina_texpr0_t *b, bool res_is_integer = true) {
+    if (Params::use_integers && res_is_integer) {
       return elina_texpr0_binop(ELINA_TEXPR_DIV, a, b, ELINA_RTYPE_INT,
                                 ELINA_RDIR_ZERO);
     } else {
@@ -554,7 +560,8 @@ private:
   // --- from elina to crab
 
   inline void convert_elina_number(double n, ikos::z_number &res) const {
-    res = ikos::z_number((long)n);
+//    res = ikos::z_number((long)n);
+    res = ikos::z_number(n, ikos::FP_Number);
   }
 
   inline void convert_elina_number(double n, ikos::fp_number &res) const {
@@ -744,6 +751,8 @@ private:
     elina_texpr0_t *b = num2texpr(z);
     elina_texpr0_t *res = nullptr;
 
+    bool res_is_integer = x.get_type().is_integer() && y.get_type().is_integer();
+
     switch (op) {
     case OP_ADDITION:
       res = texpr_add(a, b);
@@ -755,7 +764,7 @@ private:
       res = texpr_mul(a, b);
       break;
     case OP_SDIV:
-      res = texpr_div(a, b);
+      res = texpr_div(a, b, res_is_integer);
       break;
     default:
       CRAB_ERROR("elina operation ", op, " not supported");
@@ -805,6 +814,8 @@ private:
     elina_texpr0_t *b = var2texpr(z);
     elina_texpr0_t *res = nullptr;
 
+    bool res_is_integer = x.get_type().is_integer() && y.get_type().is_integer();
+
     switch (op) {
     case OP_ADDITION:
       res = texpr_add(a, b);
@@ -816,7 +827,7 @@ private:
       res = texpr_mul(a, b);
       break;
     case OP_SDIV:
-      res = texpr_div(a, b);
+      res = texpr_div(a, b, res_is_integer);
       break;
     default:
       CRAB_ERROR("elina operation ", op, " not supported");
