@@ -2042,8 +2042,11 @@ public:
     if (name == "sin" ) { function = 3; }
     if (name == "pow" ) { function = 4; }
     if (name == "inv" ) { function = 5; }
+    if (name == "llvm.fabs.f64" ){ function = 6; }
+    if (name == "exp" ){ function = 7; }
+    if (name == "log" ){ function = 8; }
 
-    if (function >0 && function != 4) {
+    if (function > 0 && function != 4) {
       variable_t x = inputs[0].get_variable();
       variable_t y = outputs[0];
       auto dim_rhs = get_var_dim_insert(x);
@@ -2059,6 +2062,14 @@ public:
       auto dim_rhs = get_var_dim_insert(x);
       auto dim_lhs = get_var_dim_insert(y);
       m_apstate = elinaPtr(get_man(), elina_abstract0_math_pow(get_man(), &*m_apstate, dim_lhs, dim_rhs, (int) pow.get_double()));
+      return;
+    }
+
+    /* Debug function. todo: (JR) remove */
+    if (name == "__CRAB_get_range") {
+      variable_t x = inputs[0].get_variable();
+      interval_t ival_x = at(x);
+      crab::outs() << "crab_range: " << x << " : " << ival_x << "\n";
       return;
     }
 

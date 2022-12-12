@@ -834,17 +834,18 @@ negate_inequality(const linear_constraint<Number, VariableName> &c) {
 }
 
 // Specialized version for z_number
-template <typename VariableName>
-linear_constraint<z_number, VariableName>
-negate_inequality(const linear_constraint<z_number, VariableName> &c) {
-  using linear_expression_t = linear_expression<z_number, VariableName>;
-  using linear_constraint_t = linear_constraint<z_number, VariableName>;
-  assert(c.is_inequality());
-  // negate(e <= 0) = e >= 1
-  linear_expression_t e(-(c.expression() - 1));
-  return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY,
-                             c.is_signed());
-}
+// todo: (JR) Removed specialization since we are using z_number for FP as well.
+//template <typename VariableName>
+//linear_constraint<z_number, VariableName>
+//negate_inequality(const linear_constraint<z_number, VariableName> &c) {
+//  using linear_expression_t = linear_expression<z_number, VariableName>;
+//  using linear_constraint_t = linear_constraint<z_number, VariableName>;
+//  assert(c.is_inequality());
+//  // negate(e <= 0) = e >= 1
+//  linear_expression_t e(-(c.expression() - 1));
+//  return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY,
+//                             c.is_signed());
+//}
 
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName> strict_to_non_strict_inequality(
@@ -857,17 +858,18 @@ linear_constraint<Number, VariableName> strict_to_non_strict_inequality(
 }
 
 // Specialized version for z_number
-template <typename VariableName>
-linear_constraint<z_number, VariableName> strict_to_non_strict_inequality(
-    const linear_constraint<z_number, VariableName> &c) {
-  using linear_expression_t = linear_expression<z_number, VariableName>;
-  using linear_constraint_t = linear_constraint<z_number, VariableName>;
-  assert(c.is_strict_inequality());
-  // e < 0 --> e <= -1
-  linear_expression_t e(c.expression() + 1);
-  return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY,
-                             c.is_signed());
-}
+// todo: (JR) Removed specialization since we are using z_number for FP as well.
+//template <typename VariableName>
+//linear_constraint<z_number, VariableName> strict_to_non_strict_inequality(
+//    const linear_constraint<z_number, VariableName> &c) {
+//  using linear_expression_t = linear_expression<z_number, VariableName>;
+//  using linear_constraint_t = linear_constraint<z_number, VariableName>;
+//  assert(c.is_strict_inequality());
+//  // e < 0 --> e <= -1
+//  linear_expression_t e(c.expression() + 1);
+//  return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY,
+//                             c.is_signed());
+//}
 } // end namespace linear_constraint_impl
 
 template <typename Number, typename VariableName>

@@ -2108,10 +2108,11 @@ public:
     if ((std::all_of(inputs.begin(), inputs.end(),
                      [](const variable_or_constant_t &v) {
                        return v.get_type().is_integer() ||
+                              v.get_type().is_fp() ||
                               v.get_type().is_bool();
                      })) &&
         (std::all_of(outputs.begin(), outputs.end(), [](const variable_t &v) {
-          return v.get_type().is_integer() || v.get_type().is_bool();
+          return v.get_type().is_integer() || v.get_type().is_fp() || v.get_type().is_bool();
         }))) {
       m_base_dom.intrinsic(name, inputs, outputs);
     } else {
