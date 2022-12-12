@@ -554,7 +554,14 @@ q_number::q_number(const std::string &s, unsigned base) {
 
 q_number::q_number(const z_number &z) {
   mpq_init(_n);
-  mpq_set_z(_n, z._n);
+
+  if (z.discr == FP_Number) {
+    mpq_set_d(_n, z._f);
+  }
+
+  if (z.discr == Z_Number) {
+    mpq_set_z(_n, z._n);
+  }
 }
 
 q_number::q_number(const fp_number &z) {
