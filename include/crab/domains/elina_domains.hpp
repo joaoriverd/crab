@@ -2032,10 +2032,8 @@ public:
   }
 
   /* begin intrinsics operations */
-  void intrinsic(std::string name,
-		 const variable_or_constant_vector_t &inputs,
+  void intrinsic(std::string name, const variable_or_constant_vector_t &inputs,
                  const variable_vector_t &outputs) override {
-
     int function = 0;
     if (name == "sqrt") { function = 1; }
     if (name == "sqr" ) { function = 2; }
@@ -2070,6 +2068,8 @@ public:
       variable_t x = inputs[0].get_variable();
       interval_t ival_x = at(x);
       crab::outs() << "crab_range: " << x << " : " << ival_x << "\n";
+      crab::outs() << "Abs error: " << ival_x.ub() - ival_x.lb() << "\n";
+//      crab::outs() << "Rel error: " << (ival_x.ub() - ival_x.lb())/ival_x.lb() << "\n";
       return;
     }
 
