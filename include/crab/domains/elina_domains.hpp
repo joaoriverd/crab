@@ -2043,6 +2043,8 @@ public:
     if (name == "llvm.fabs.f64" ){ function = 6; }
     if (name == "exp" ){ function = 7; }
     if (name == "log" ){ function = 8; }
+    if (name == "cos" ){ function = 9; }
+    if (name == "atan" ){ function = 10; }
 
     if (function > 0 && function != 4) {
       variable_t x = inputs[0].get_variable();
