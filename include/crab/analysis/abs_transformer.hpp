@@ -379,6 +379,11 @@ public:
       pre_bot = m_inv.is_bottom();
     }
 
+    /* todo (JR): Added to detect division by zero. Think how to improve this. */
+    if (stmt.op() == crab::cfg::BINOP_SDIV) {
+      crab::outs() << "crab_safe: Division detected (" << &stmt << ")\n";
+    }
+
     const lin_exp_t &op1 = stmt.left();
     const lin_exp_t &op2 = stmt.right();
     if (op1.get_variable() && op2.get_variable()) {
@@ -398,7 +403,8 @@ public:
         CRAB_ERROR("Invariant became bottom after ", stmt);
       }
     }
-    CRAB_VERBOSE_IF(5, crab::outs() << "EXECUTED " << stmt << " :" << m_inv <<"\n";);
+
+    CRAB_VERBOSE_IF(5, crab::outs() << "EXECUTED " << stmt << " :" << m_inv << "\n";);
   }
 
   virtual void exec(select_t &stmt) override {
