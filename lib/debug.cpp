@@ -2,7 +2,7 @@
 
 #ifndef NCRABLOG
 namespace crab {
-bool CrabLogFlag = false;
+bool CrabLogFlag = true; // todo: JR make false by default
 std::set<std::string> CrabLog;
 
 void CrabEnableLog(std::string x) {
@@ -20,7 +20,7 @@ void CrabEnableLog(std::string x) {}
 #endif
 
 namespace crab {
-unsigned CrabVerbosity = 5; // todo: jr make zero by default
+unsigned CrabVerbosity = 5; // todo: JR make zero by default
 void CrabEnableVerbosity(unsigned v) { CrabVerbosity = v; }
 
 bool CrabWarningFlag = true;

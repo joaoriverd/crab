@@ -11,6 +11,8 @@
 
 namespace crab {
 
+#undef NCRABLOG // todo: JR remove this
+
 #ifndef NCRABLOG
 #define CRAB_LOG(TAG, CODE)                                                    \
   do {                                                                         \
