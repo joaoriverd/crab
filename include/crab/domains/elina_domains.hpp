@@ -1505,8 +1505,8 @@ public:
         csts +=
             ikos::linear_constraint_impl::strict_to_non_strict_inequality(c);
       } else if (c.is_disequation()) {
-	// We try to convert a disequation into a strict inequality
-	constraint_simp_domain_traits<elina_domain_t>::lower_disequality(*this, c, csts);
+        // We try to convert a disequation into a strict inequality
+        constraint_simp_domain_traits<elina_domain_t>::lower_disequality(*this, c, csts);
         // We try to convert a disequation into conjunctive inequalities
         inequalities_from_disequation(c.expression(), csts);
       } else {
@@ -2054,7 +2054,7 @@ public:
       m_apstate = elinaPtr(get_man(), elina_abstract0_math_func(get_man(), &*m_apstate, dim_lhs, dim_rhs, function));
       return;
     }
-    else if (function == 4) {
+    else if (function == 4 && inputs[1].is_constant()) {
       /* Handle power function */
       variable_t x = inputs[0].get_variable();
       number_t pow = inputs[1].get_constant();
