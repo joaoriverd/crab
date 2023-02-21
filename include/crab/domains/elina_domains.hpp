@@ -9,6 +9,8 @@
 #include <crab/support/stats.hpp>
 #include <climits>
 
+extern int tvpi_accuracy_level_math;
+
 namespace crab {
 namespace domains {
 using elina_domain_id_t = enum { ELINA_ZONES, ELINA_OCT, ELINA_TVPI, ELINA_PK };
@@ -2073,6 +2075,13 @@ public:
       crab::outs() << "Abs error: " << ival_x.ub() - ival_x.lb() << "\n";
 //      crab::outs() << "Rel error: " << (ival_x.ub() - ival_x.lb())/ival_x.lb() << "\n";
       return;
+    }
+
+    if (name == "__CRAB_disable_accurate_math") {
+      tvpi_accuracy_level_math = 0;
+    }
+    if (name == "__CRAB_accuracy_level_1_math") {
+      tvpi_accuracy_level_math = 1;
     }
 
     CRAB_WARN("Intrinsics ", name, " not implemented by ", domain_name());
