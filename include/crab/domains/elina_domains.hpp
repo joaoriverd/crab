@@ -2077,6 +2077,15 @@ public:
       return;
     }
 
+    if (name == "__CRAB_get_planar_poly") {
+      variable_t x = inputs[0].get_variable();
+      variable_t y = inputs[1].get_variable();
+      auto dim1 = get_var_dim_insert(x);
+      auto dim2 = get_var_dim_insert(y);
+      elina_abstract0_debug_func(get_man(), &*m_apstate, dim1, dim2, 1);
+      return;
+    }
+
     if (name == "__CRAB_disable_accurate_math") {
       tvpi_accuracy_level_math = 0;
     }
