@@ -10,6 +10,7 @@
 #include <climits>
 
 extern int tvpi_accuracy_level_math;
+extern bool tvpi_rounding_sound;
 
 namespace crab {
 namespace domains {
@@ -2091,6 +2092,12 @@ public:
     }
     if (name == "__CRAB_accuracy_level_1_math") {
       tvpi_accuracy_level_math = 1;
+    }
+    if (name == "__CRAB_disable_sound_rounding") {
+      tvpi_rounding_sound = false;
+    }
+    if (name == "__CRAB_enable_sound_rounding") {
+      tvpi_rounding_sound = true;
     }
 
     CRAB_WARN("Intrinsics ", name, " not implemented by ", domain_name());
