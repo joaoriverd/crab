@@ -270,6 +270,7 @@ set (CRAB_DEPS_LIBS
   ${LDD_LIBRARY} 
   ${APRON_LIBRARY}
   ${ELINA_LIBRARY}
+  crlibm
   ${MPFR_LIBRARIES} 
   ${GMP_LIB})
 
