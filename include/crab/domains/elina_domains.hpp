@@ -2087,6 +2087,11 @@ public:
       return;
     }
 
+    if (name == "__CRAB_get_max_tvpi_error") {
+      elina_abstract0_debug_func(get_man(), &*m_apstate, 0, 0, 2);
+      return;
+    }
+
     if (name == "__CRAB_disable_accurate_math") {
       tvpi_accuracy_level_math = 0;
     }
