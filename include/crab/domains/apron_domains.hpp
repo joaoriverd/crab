@@ -10,6 +10,9 @@
 #include <crab/support/stats.hpp>
 
 #include <algorithm>
+#include <chrono>
+
+using namespace std::chrono;
 
 namespace crab {
 namespace domains {
@@ -18,10 +21,16 @@ using apron_domain_id_t = enum { APRON_INT, APRON_OCT, APRON_PK };
 template <typename Number> class ApronDefaultParams {
 public:
   // use integers with truncation rounding
-  enum { use_integers = 1 };
+  enum { use_integers = 0 };
 };
 
 template <> class ApronDefaultParams<ikos::q_number> {
+public:
+  // use reals
+  enum { use_integers = 0 };
+};
+
+template <> class ApronDefaultParams<ikos::fp_number> {
 public:
   // use reals
   enum { use_integers = 0 };
@@ -102,7 +111,7 @@ private:
   ap_state_ptr m_apstate;
   var_map_t m_var_map;
 
-  bool is_real() const { return std::is_same<Number, ikos::q_number>::value; }
+  bool is_real() const { return std::is_same<Number, ikos::q_number>::value || std::is_same<Number, ikos::z_number>::value; }
 
   bool is_integer() const { return !is_real(); }
 
@@ -370,7 +379,7 @@ private:
       return ap_texpr0_binop(AP_TEXPR_ADD, a, b, AP_RTYPE_INT, AP_RDIR_ZERO);
     } else {
       // With reals the rounding mode is ignored
-      return ap_texpr0_binop(AP_TEXPR_ADD, a, b, AP_RTYPE_REAL, AP_RDIR_ZERO);
+      return ap_texpr0_binop(AP_TEXPR_ADD, a, b, AP_RTYPE_DOUBLE, AP_RDIR_RND);
     }
   }
   static ap_texpr0_t *SUB(ap_texpr0_t *a, ap_texpr0_t *b) {
@@ -378,7 +387,7 @@ private:
       return ap_texpr0_binop(AP_TEXPR_SUB, a, b, AP_RTYPE_INT, AP_RDIR_ZERO);
     } else {
       // With reals the rounding mode is ignored
-      return ap_texpr0_binop(AP_TEXPR_SUB, a, b, AP_RTYPE_REAL, AP_RDIR_ZERO);
+      return ap_texpr0_binop(AP_TEXPR_SUB, a, b, AP_RTYPE_DOUBLE, AP_RDIR_RND);
     }
   }
   static ap_texpr0_t *MUL(ap_texpr0_t *a, ap_texpr0_t *b) {
@@ -386,7 +395,7 @@ private:
       return ap_texpr0_binop(AP_TEXPR_MUL, a, b, AP_RTYPE_INT, AP_RDIR_ZERO);
     } else {
       // With reals the rounding mode is ignored
-      return ap_texpr0_binop(AP_TEXPR_MUL, a, b, AP_RTYPE_REAL, AP_RDIR_ZERO);
+      return ap_texpr0_binop(AP_TEXPR_MUL, a, b, AP_RTYPE_DOUBLE, AP_RDIR_RND);
     }
   }
   static ap_texpr0_t *DIV(ap_texpr0_t *a, ap_texpr0_t *b) {
@@ -394,7 +403,7 @@ private:
       return ap_texpr0_binop(AP_TEXPR_DIV, a, b, AP_RTYPE_INT, AP_RDIR_ZERO);
     } else {
       // With reals the rounding mode is ignored
-      return ap_texpr0_binop(AP_TEXPR_DIV, a, b, AP_RTYPE_REAL, AP_RDIR_ZERO);
+      return ap_texpr0_binop(AP_TEXPR_DIV, a, b, AP_RTYPE_DOUBLE, AP_RDIR_RND);
     }
   }
 
@@ -445,6 +454,10 @@ private:
     res = ikos::z_number((long)d);
   }
 
+  inline void convert_apron_number(double n, ikos::fp_number &res) const {
+    res = ikos::fp_number(n);
+  }
+
   inline void convert_apron_number(double d, ikos::q_number &res) const {
     res = ikos::q_number(d);
   }
@@ -453,6 +466,12 @@ private:
     ikos::q_number q = ikos::q_number::from_mpq_srcptr(mp);
     res = q.round_to_lower();
   }
+
+  inline void convert_apron_number(mpq_ptr mp, ikos::fp_number &res) const {
+    ikos::q_number q = ikos::q_number::from_mpq_srcptr(mp);
+    res = q.get_double(); // todo (JR): unsound operation
+  }
+
   inline void convert_apron_number(mpq_ptr mp, ikos::q_number &res) const {
     res = ikos::q_number::from_mpq_srcptr(mp);
   }
@@ -1079,6 +1098,77 @@ public:
         CRAB_ERROR("apron translation only covers double or mpq scalars");
     } else
       return interval_t::top();
+  }
+
+  ikos::interval<ikos::fp_number> my_at(const variable_t &v) {
+    crab::CrabStats::count(domain_name() + ".count.to_intervals");
+    crab::ScopedCrabStats __st__(domain_name() + ".to_intervals");
+
+    if (is_bottom())
+      return ikos::interval<ikos::fp_number>::bottom();
+
+    if (auto dim = get_var_dim(v)) {
+
+      ap_interval_t *intv =
+          ap_abstract0_bound_dimension(get_man(), &*m_apstate, *dim);
+      if (ap_interval_is_top(intv)) {
+        ap_interval_free(intv);
+        return ikos::interval<ikos::fp_number>::top();
+      }
+
+      ap_scalar_t *lb = intv->inf;
+      ap_scalar_t *ub = intv->sup;
+
+      if (lb->discr == AP_SCALAR_DOUBLE && ub->discr == AP_SCALAR_DOUBLE) {
+
+        if (ap_scalar_infty(lb) == -1) { // [-oo, k]
+          ikos::fp_number sup;
+          convert_apron_number(ub->val.dbl, sup);
+          ap_interval_free(intv);
+          return ikos::interval<ikos::fp_number>(ikos::bound<ikos::fp_number>::minus_infinity(), sup);
+        } else if (ap_scalar_infty(ub) == 1) { // [k, +oo]
+          ikos::fp_number inf;
+          convert_apron_number(lb->val.dbl, inf);
+          ap_interval_free(intv);
+          return ikos::interval<ikos::fp_number>(inf, ikos::bound<ikos::fp_number>::plus_infinity());
+
+        } else {
+          assert(ap_scalar_infty(lb) == 0); // lb is finite
+          assert(ap_scalar_infty(ub) == 0); // ub is finite
+          ikos::fp_number inf, sup;
+          convert_apron_number(lb->val.dbl, inf);
+          convert_apron_number(ub->val.dbl, sup);
+          ap_interval_free(intv);
+          return ikos::interval<ikos::fp_number>(inf, sup);
+        }
+
+      } else if (lb->discr == AP_SCALAR_MPQ && ub->discr == AP_SCALAR_MPQ) {
+
+        if (ap_scalar_infty(lb) == -1) { // [-oo, k]
+          ikos::fp_number sup;
+          convert_apron_number(ub->val.mpq, sup);
+          ap_interval_free(intv);
+          return ikos::interval<ikos::fp_number>(ikos::bound<ikos::fp_number>::minus_infinity(), sup);
+
+        } else if (ap_scalar_infty(ub) == 1) { // [k, +oo]
+          ikos::fp_number inf;
+          convert_apron_number(lb->val.mpq, inf);
+          ap_interval_free(intv);
+          return ikos::interval<ikos::fp_number>(inf, ikos::bound<ikos::fp_number>::plus_infinity());
+        } else {
+          assert(ap_scalar_infty(lb) == 0); // lb is finite
+          assert(ap_scalar_infty(ub) == 0); // ub is finite
+
+          ikos::fp_number inf, sup;
+          convert_apron_number(lb->val.mpq, inf);
+          convert_apron_number(ub->val.mpq, sup);
+          ap_interval_free(intv);
+          return ikos::interval<ikos::fp_number>(inf, sup);
+        }
+      } else
+        CRAB_ERROR("apron translation only covers double or mpq scalars");
+    } else
+      return ikos::interval<ikos::fp_number>::top();
   }
 
   void set(variable_t v, interval_t ival) {
@@ -1719,9 +1809,32 @@ public:
   }
 
   /* begin intrinsics operations */
-  void intrinsic(std::string name, 
-		 const variable_or_constant_vector_t &inputs,
+  void intrinsic(std::string name, const variable_or_constant_vector_t &inputs,
                  const variable_vector_t &outputs) override {
+    if (name == "__CRAB_get_range") {
+      variable_t x = inputs[0].get_variable();
+      ikos::interval<ikos::fp_number> ival_x = my_at(x);
+      crab::outs() << "crab_range: " << x << " : " << ival_x << "\n";
+      crab::outs() << "Abs error: " << ival_x.ub() - ival_x.lb() << "\n";
+      return;
+    }
+
+    static time_point<std::chrono::system_clock> start, end;
+    if (name == "__CRAB_start_timer") {
+      // Get starting timepoint
+      start = high_resolution_clock::now();
+      return;
+    }
+
+    if (name == "__CRAB_stop_timer") {
+      // Get starting timepoint
+      end = high_resolution_clock::now();
+      auto duration = duration_cast<microseconds>(end - start);
+      double elapsed = duration.count();
+      crab::outs() << "crab_time: " << floor(elapsed/10.0)/100.0 << " ms\n";
+      return;
+    }
+
     CRAB_WARN("Intrinsics ", name, " not implemented by ", domain_name());
   }
 
