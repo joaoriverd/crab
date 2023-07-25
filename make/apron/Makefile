@@ -22,6 +22,7 @@ LDD_LIBS := \
 
 APRON_LIBS := \
     $(CRAB_INSTALL)/apron/lib/libpolkaMPQ.a \
+    $(CRAB_INSTALL)/apron/lib/libfppD.a \
     $(CRAB_INSTALL)/apron/lib/liboctD.a \
     $(CRAB_INSTALL)/apron/lib/liboptoct.a \
     $(CRAB_INSTALL)/apron/lib/liblinkedlistapi.a \

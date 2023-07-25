@@ -16,7 +16,7 @@ using namespace std::chrono;
 
 namespace crab {
 namespace domains {
-using apron_domain_id_t = enum { APRON_INT, APRON_OCT, APRON_PK };
+using apron_domain_id_t = enum { APRON_INT, APRON_OCT, APRON_PK, APRON_FPP };
 
 template <typename Number> class ApronDefaultParams {
 public:
@@ -126,6 +126,9 @@ private:
         break;
       case APRON_PK:
         s_apman = pk_manager_alloc(false);
+        break;
+      case APRON_FPP:
+        s_apman = fpp_manager_alloc();
         break;
       default:
         CRAB_ERROR("unknown apron domain");
@@ -931,6 +934,7 @@ public:
             std::move(m));
       case APRON_INT:
       case APRON_PK:
+      case APRON_FPP:
       default:
         // CRAB_WARN("used meet instead of narrowing: \n",
         //           "make sure only a finite number of descending iterations
@@ -1871,6 +1875,8 @@ public:
       return "ApronOctagon";
     case APRON_PK:
       return "ApronNewPolka";
+    case APRON_FPP:
+      return "ApronFPPol";
     default:
       CRAB_ERROR("Unknown apron domain");
     }

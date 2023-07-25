@@ -4,6 +4,7 @@
 #include "box.h"
 #include "oct.h"
 #include "pk.h"
+#include "fpp.h"
 #include "pkeq.h"
 
 #include <memory>
