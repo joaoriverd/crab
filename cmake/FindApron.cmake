@@ -36,8 +36,8 @@ if (NOT APRON_FOUND)
   find_package_handle_standard_args (Apron
     REQUIRED_VARS APRON_INCLUDE_DIR APRON_LIBRARY GMP_FOUND MPFR_FOUND)
   
-  set (APRON_INCLUDE_DIR ${APRON_INCLUDE_DIR} ${MPFR_INC_DIR})
-  set (APRON_LIBRARY ${APRON_LIBRARY} ${MPFR_LIB})
+  set (APRON_INCLUDE_DIR ${APRON_INCLUDE_DIR} ${MPFR_INC_DIR} /usr/include/)
+  set (APRON_LIBRARY ${APRON_LIBRARY} ${MPFR_LIB} /usr/lib/x86_64-linux-gnu/libglpk.a /usr/lib/x86_64-linux-gnu/libltdl.a)
   
   mark_as_advanced(APRON_LIBRARY APRON_INCLUDE_DIR 
     Apron_Apron_Lib Apron_Box_Lib Apron_Oct_Lib Apron_Polka_Lib Apron_FPPol_Lib)
