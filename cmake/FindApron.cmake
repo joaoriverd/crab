@@ -8,9 +8,9 @@ if (NOT APRON_FOUND)
   #### library refers to the apron libraries located in the build
   #### directory instead of the ones where they will be installed.
   #if(NOT BUILD_CRAB_LIBS_SHARED)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+#    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
   #else()
-  #  set(CMAKE_FIND_LIBRARY_SUFFIXES .so .dylib)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .so .dylib)
   #endif()
   
   set (APRON_ROOT "" CACHE PATH "Root of Apron install.")
@@ -35,7 +35,7 @@ if (NOT APRON_FOUND)
   include (FindPackageHandleStandardArgs)
   find_package_handle_standard_args (Apron
     REQUIRED_VARS APRON_INCLUDE_DIR APRON_LIBRARY GMP_FOUND MPFR_FOUND)
-  
+
   set (APRON_INCLUDE_DIR ${APRON_INCLUDE_DIR} ${MPFR_INC_DIR} /usr/include/)
   set (APRON_LIBRARY ${APRON_LIBRARY} ${MPFR_LIB} /usr/lib/x86_64-linux-gnu/libglpk.a /usr/lib/x86_64-linux-gnu/libltdl.a)
   
