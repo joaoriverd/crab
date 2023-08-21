@@ -8,6 +8,9 @@
 #include <crab/support/debug.hpp>
 #include <crab/support/stats.hpp>
 #include <climits>
+#include <chrono>
+
+using namespace std::chrono;
 
 extern int tvpi_accuracy_level_math;
 extern bool tvpi_rounding_sound;
@@ -2075,6 +2078,22 @@ public:
       crab::outs() << "crab_range: " << x << " : " << ival_x << "\n";
       crab::outs() << "Abs error: " << ival_x.ub() - ival_x.lb() << "\n";
 //      crab::outs() << "Rel error: " << (ival_x.ub() - ival_x.lb())/ival_x.lb() << "\n";
+      return;
+    }
+
+    static time_point<std::chrono::system_clock> start, end;
+    if (name == "__CRAB_start_timer") {
+      // Get starting timepoint
+      start = high_resolution_clock::now();
+      return;
+    }
+
+    if (name == "__CRAB_stop_timer") {
+      // Get starting timepoint
+      end = high_resolution_clock::now();
+      auto duration = duration_cast<microseconds>(end - start);
+      double elapsed = duration.count();
+      crab::outs() << "crab_time: " << floor(elapsed/10.0)/100.0 << " ms\n";
       return;
     }
 
