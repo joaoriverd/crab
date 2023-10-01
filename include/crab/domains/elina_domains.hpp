@@ -2051,6 +2051,9 @@ public:
     if (name == "log" ){ function = 8; }
     if (name == "cos" ){ function = 9; }
     if (name == "atan" ){ function = 10; }
+    if (name == "tan" ){ function = 11; }
+    if (name == "asin" ){ function = 12; }
+    if (name == "acos" ){ function = 13; }
 
     if (function > 0 && function != 4) {
       variable_t x = inputs[0].get_variable();
