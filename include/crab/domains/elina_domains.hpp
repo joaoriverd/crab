@@ -12,7 +12,7 @@
 
 using namespace std::chrono;
 
-extern int tvpi_accuracy_level_math;
+extern int tvpi_math_level;
 extern bool tvpi_rounding_sound;
 
 namespace crab {
@@ -2114,11 +2114,23 @@ public:
       return;
     }
 
-    if (name == "__CRAB_disable_accurate_math") {
-      tvpi_accuracy_level_math = 0;
-    }
+//    if (name == "__CRAB_disable_accurate_math") {
+//      tvpi_accuracy_level_math = 0;
+//    }
     if (name == "__CRAB_accuracy_level_1_math") {
-      tvpi_accuracy_level_math = 1;
+      tvpi_math_level = 1;
+      crab::outs() << "crab_math: level 1\n";
+      return;
+    }
+    if (name == "__CRAB_accuracy_level_2_math") {
+      tvpi_math_level = 2;
+      crab::outs() << "crab_math: level 2\n";
+      return;
+    }
+    if (name == "__CRAB_accuracy_level_3_math") {
+      tvpi_math_level = 3;
+      crab::outs() << "crab_math: level 3\n";
+      return;
     }
     if (name == "__CRAB_disable_sound_rounding") {
       tvpi_rounding_sound = false;
